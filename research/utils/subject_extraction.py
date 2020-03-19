@@ -3,6 +3,7 @@ import random
 import string
 import os
 import numpy
+import conllu
 
 def randomTokens():
     """Generate a random string of fixed length """
@@ -13,6 +14,14 @@ def randomTokens():
         stringLength = int(random.gauss(6,3)+1)
         tokens.append(''.join(random.choice(letters) for i in range(stringLength)))
     return tokens
+
+def save_connlu_to_file(connlu_data, path='../test-data/conllu_temp.txt'):
+    if isinstance(connlu_data, list):
+        connlu_data = '\n'.join([sentence.serialize() for sentence in connlu_data])
+    if isinstance(connlu_data, conllu.models.TokenList):
+        connlu_data = connlu_data.serialize()
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(connlu_data)
 
 class SubjectExtractor:
     
