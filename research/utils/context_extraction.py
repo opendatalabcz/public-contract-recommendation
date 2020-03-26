@@ -50,8 +50,6 @@ def validate_subj_contexts_v2(df_contracts, vzdirs):
 
 
 class SubjectContextExtractor():
-    _keywords = None
-    _subj_range = None
 
     def __init__(self, keywords={"Předmět smlouvy": 1}, subj_range=2000):
         self._keywords = keywords
@@ -147,13 +145,11 @@ class SubjectContextExtractor():
 
 
 class SubjectContextEndDetector():
-    _text = None
-    _subj_range = None
-    _end_position = None
 
     def __init__(self, text, subj_range=2000):
         self._text = text
         self._subj_range = subj_range
+        self._end_position = None
 
     def detect(self, start_position, end_position=None):
         self._end_position = min(start_position + self._subj_range * 5, len(self._text))
@@ -280,6 +276,7 @@ class SubjectContextEndQuotationDetector(SubjectContextEndDetector):
             if len(end_occurrences) > 0:
                 self._end_position = name_start_position + end_occurrences[0] + 1
                 return self._end_position
+
 
 class SubjectContextEndWordsDetector(SubjectContextEndDetector):
 
