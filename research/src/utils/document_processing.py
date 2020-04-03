@@ -23,10 +23,13 @@ def char_ignore_mask(chars):
 
 def find_all_occurrences_in_string(pattern, text, lower=True):
     if lower:
-        pattern = pattern.lower()
+        if isinstance(pattern, str):
+            pattern = pattern.lower()
         text = text.lower()
-    occurences = [m.start() for m in re.finditer(pattern, text)]
-    return occurences
+    if not isinstance(pattern, re.Pattern):
+        pattern = re.compile(pattern)
+    occurrences = [m.start() for m in pattern.finditer(text)]
+    return occurrences
 
 
 def chars_occurrence_ratio(text, chars='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž'):

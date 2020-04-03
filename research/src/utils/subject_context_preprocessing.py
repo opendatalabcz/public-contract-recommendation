@@ -218,6 +218,28 @@ class NumeralLinesFilter(LineByLineTransformer):
         return filtered_lines
 
 
+class TooLongLinesTransformer(LineByLineTransformer):
+
+    def __init__(self, delimiters=[(r'[\s,\.](-)[\s]+[^(Kč)]', 1)], too_long_line_treshold=200):
+        self._delimiters = [(re.compile(pattern), group_num) for pattern, group_num in delimiters]
+        self._too_long_line_treshold = too_long_line_treshold
+
+    def _process(self, lines):
+        transformed_lines = []
+        for line in lines:
+            if len(line) > self._too_long_line_treshold:
+                for pattern, group_num in self._delimiters:
+                    occs = [m.start(1) for m in pattern.finditer(line[5:])]
+                    occs = [occ + 5 for occ in occs]
+                    for m in re.finditer(r'"([^"]*)"', line):
+                        occs = [occ for occ in occs if not (m.start(0) < occ < m.end(0))]
+                    occs = [occ for occ in occs if line[occ-1] != ',']
+                    parts = [line[i:j] for i, j in zip([None] + occs, occs + [None])]
+                    line = '\n'.join(parts)
+            transformed_lines.append(line)
+        return transformed_lines
+
+
 class AttributeExtractor(LineByLineTransformer):
 
     def __init__(self, attr_tag='<ATTRIBUTE>;<ATTRIBUTE/>'):
@@ -290,10 +312,45 @@ class StructuredContractNameExtractor(AttributeExtractor):
         return name_candidates
 
 
-class ItemEnumerationExtractor(AttributeExtractor):
+class ItemExtractor(AttributeExtractor):
 
-    def __init__(self, item_tag='<ITEM>;<ITEM/>', enumeration_pattern=r'010(10)*'):
+    def __init__(self, item_tag='<ITEM>;<ITEM/>'):
         super().__init__(item_tag)
+
+    def _process_internal(self, *args):
+        return []
+
+    def _process(self, lines):
+        selected_lines = self._process_internal(lines)
+        extended_lines = [self._complete_attribute_line(line) for line in selected_lines]
+        lines.extend(extended_lines)
+        return lines
+
+
+class ItemColonExtractor(ItemExtractor):
+
+    def __init__(self, patterns=[r'zboží:\.'], **kwargs):
+        super().__init__(**kwargs)
+        self._patterns = [re.compile(p) for p in patterns]
+
+    def _process_internal(self, lines):
+        selected_lines = []
+        for line in lines:
+            for pat in self._patterns:
+                match = pat.search(line)
+                if match:
+                    start = match.end(0)
+                    item = line[start:]
+                    if len(item) > 5:
+                        selected_lines.append(item)
+        selected_lines = [line.strip('\t .') for line in selected_lines]
+        return selected_lines
+
+
+class ItemEnumerationExtractor(ItemExtractor):
+
+    def __init__(self, enumeration_pattern=r'010(10)*', **kwargs):
+        super().__init__(**kwargs)
         self._enumeration_pattern = enumeration_pattern
 
     def _get_longest_matching_part(self, lines_structure_pattern):
@@ -309,15 +366,6 @@ class ItemEnumerationExtractor(AttributeExtractor):
         selected_parts_lengths = [len(p) for p in selected_parts]
         longest_selected_part = selected_parts[numpy.argmax(selected_parts_lengths)]
         return longest_selected_part
-
-    def _process_internal(self, *args):
-        return []
-
-    def _process(self, lines):
-        selected_lines = self._process_internal(lines)
-        extended_lines = [self._complete_attribute_line(line) for line in selected_lines]
-        lines.extend(extended_lines)
-        return lines
 
 
 class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
@@ -376,6 +424,26 @@ class CharItemEnumerationExtractor(ItemEnumerationExtractor):
         return []
 
 
+class HeaderItemEnumerationExtractor(ItemEnumerationExtractor):
+
+    def __init__(self, header_pattern='[Pp]ředmět.{0,20}je.{0,5}$', **kwargs):
+        super().__init__(**kwargs)
+        self._header_pattern = header_pattern
+
+    def _process_internal(self, lines):
+        selected_lines = []
+        select_line = False
+        for line in lines:
+            if len(line) < 5:
+                select_line = False
+            if select_line:
+                selected_lines.append(line)
+            if re.search(self._header_pattern, line):
+                select_line = True
+        selected_lines = [line.strip('\t .') for line in selected_lines]
+        return selected_lines
+
+
 class AddLine(LineByLineTransformer):
 
     def __init__(self, line='=========='):
@@ -419,14 +487,18 @@ class SubjectContextPreprocessor:
                 TooShortLinesFilter(too_short_line_threshold=5),
                 IrrelevantLinesFilter(keywords=['strana', 'stránka'], lower=True),
                 IrrelevantLinesRegexFilter(patterns=[r'www', r'[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}']),  # email
+                RegexReplaceTransformer(pattern_to_transform=r',([\s]+[A-Z][a-z ])', result_pattern='.\g<1>'),
                 RegexReplaceTransformer(pattern_to_transform=r'\n[ \t]*(.{0,1}[\d]+.{0,1})+[ \t]*',  # paragraph numbers
                                         result_pattern='\n'),
                 BlankLinesFilter(replacement='\n', top_n_frequency=200, top_n_var_threshold=5,
                                  full_line_threshold=0.85, min_max_line_length=70),
                 ReplaceMarksTransformer(marks_to_transform='„“', result_mark='"'),
+                TooLongLinesTransformer(delimiters=[(r'[\s,\.](-)[\s]+[^(Kč)]', 1)], too_long_line_treshold=200),
                 RegexReplaceTransformer(pattern_to_transform=r'([^\n])[ ]*\n', result_pattern='\g<1>.\n'),
+                RegexReplaceTransformer(pattern_to_transform=r'(([Nn]ázev|[Pp]opis)[^\n,.:"()]{5,})(\s[A-Z][^\n:]{10})', result_pattern='\g<1>:\g<3>'),
                 ReplaceMarksTransformer(marks_to_transform=[':'], result_mark=':.'),
                 ReplaceMarksTransformer(marks_to_transform=['..'], result_mark='.'),
+                RegexReplaceTransformer(pattern_to_transform=r'\([^\n()]*\)', result_pattern=''),
                 AddLine(line='\n'),
                 QuotedContractNameExtractor(name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                                             false_keywords=['přílo', 'dále', 'jen'],
@@ -435,11 +507,13 @@ class SubjectContextPreprocessor:
                 StructuredContractNameExtractor(name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                                                 false_keywords=['přílo', 'dále', 'jen', '"'],
                                                 positive_keywords=['název'], min_length=5, delim=':.'),
+                ItemColonExtractor(item_tag='<ITEM>;<ITEM/>', patterns=[r'(zboží|položk).{,10}:']),
                 StructureItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', enumeration_pattern=r'010(10)*',
                                                   full_line_length=150, delim=':.'),
                 CharItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>',
                                              enumeration_pattern=r'1+',
                                              forbidden_chars='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789'),
+                HeaderItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', header_pattern='[Pp]ředmět.{0,20}je.{0,5}$'),
             ]
 
     def transform_text(self, text):
