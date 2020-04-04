@@ -16,14 +16,20 @@ class TextTransformer:
 
 class LineByLineTransformer(TextTransformer):
 
+    def __init__(self, keep_attributes=False):
+        self._keep_attributes = keep_attributes
+
     def process(self, text):
         lines_to_process = []
         attribute_lines = []
-        for line in text.split('\n'):
-            if re.match(r'<[A-Z_]+>', line):
-                attribute_lines.append(line)
-            else:
-                lines_to_process.append(line)
+        if self._keep_attributes:
+            lines_to_process = text.split('\n')
+        else:
+            for line in text.split('\n'):
+                if re.match(r'<[A-Z_]+>', line):
+                    attribute_lines.append(line)
+                else:
+                    lines_to_process.append(line)
         processed_lines = self._process(lines_to_process)
         lines = processed_lines + attribute_lines
         return '\n'.join(lines)
@@ -129,11 +135,16 @@ class BlankLinesFilter(TextTransformer):
         lines = [line for line in text.split('\n')]
         lengths = [len(line) for line in lines]
         sorted_lengths = numpy.sort(numpy.array(lengths))[::-1]
-        max_length = sorted_lengths[0]
+        non_empty_lengths = numpy.extract(sorted_lengths > 0, sorted_lengths)
+        max_length = numpy.quantile(non_empty_lengths, q=0.95)
         if max_length >= self._min_max_line_length:
             num_full_length = (sorted_lengths > self._full_line_threshold * max_length).sum()
             num_top_n = max(num_full_length, 2)
             top_n = sorted_lengths[:num_top_n]
+            if len(top_n) > 3:
+                top_n = top_n[:-1]
+            if len(top_n) > 3:
+                top_n = top_n[1:]
             var_of_top_n = numpy.std(top_n)
             if var_of_top_n < self._top_n_var_threshold:
                 text = self._filter_lines(lines, max_length)
@@ -161,6 +172,7 @@ class BlankLinesFilter3(BlankLinesFilter):
 class IrrelevantLinesFilter(LineByLineTransformer):
 
     def __init__(self, keywords=['strana', 'stránka'], lower=True):
+        super().__init__()
         self._keywords = keywords
         self._lower = lower
 
@@ -179,6 +191,7 @@ class IrrelevantLinesFilter(LineByLineTransformer):
 class IrrelevantLinesRegexFilter(LineByLineTransformer):
 
     def __init__(self, patterns=[r'www', r'[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}']):
+        super().__init__()
         self._patterns = patterns
 
     def _process(self, lines):
@@ -193,6 +206,7 @@ class IrrelevantLinesRegexFilter(LineByLineTransformer):
 class TooShortLinesFilter(LineByLineTransformer):
 
     def __init__(self, too_short_line_threshold=5):
+        super().__init__()
         self._too_short_line_threshold = too_short_line_threshold
 
     def _process(self, lines):
@@ -206,6 +220,7 @@ class TooShortLinesFilter(LineByLineTransformer):
 class NumeralLinesFilter(LineByLineTransformer):
 
     def __init__(self, too_many_numerals_ratio_threshold=0.5):
+        super().__init__()
         self._too_many_numerals_ratio_threshold = too_many_numerals_ratio_threshold
 
     def _process(self, lines):
@@ -220,43 +235,97 @@ class NumeralLinesFilter(LineByLineTransformer):
 
 class TooLongLinesTransformer(LineByLineTransformer):
 
-    def __init__(self, delimiters=[(r'[\s,\.](-)[\s]+[^(Kč)]', 1)], too_long_line_treshold=200):
-        self._delimiters = [(re.compile(pattern), group_num) for pattern, group_num in delimiters]
+    def __init__(self, forbidden_delimiters='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789',
+                 special_delimiters={'-': (r'[\s,\.](-)[\s]+[^(Kč)]', 1)},
+                 too_long_line_treshold=200):
+        super().__init__()
+        self._forbidden_delimiters = forbidden_delimiters
+        self._delimiters = {delim: (re.compile(special_delimiters[delim][0]), special_delimiters[delim][1])
+                                    for delim in special_delimiters}
         self._too_long_line_treshold = too_long_line_treshold
 
-    def _process(self, lines):
-        transformed_lines = []
-        for line in lines:
-            if len(line) > self._too_long_line_treshold:
-                for pattern, group_num in self._delimiters:
-                    occs = [m.start(1) for m in pattern.finditer(line[5:])]
-                    occs = [occ + 5 for occ in occs]
+    def _get_most_frequent_char(self, chars_frequencies):
+        for c in chars_frequencies:
+            if c[0].lower() not in self._forbidden_delimiters:
+                return c[0]
+        return None
+
+    def _get_first_chars(self, lines):
+        first_chars = [(l[0] if len(l) > 0 else None, i) for i, l in enumerate(lines)]
+        filtered_chars = list(filter(lambda c: c[0] is not None, first_chars))
+        return filtered_chars
+
+    def _get_most_frequent_first_char(self, lines):
+        first_chars = self._get_first_chars(lines)
+        most_frequent_first_chars = Counter([c[0] for c in first_chars]).most_common()
+        most_frequent_first_char = self._get_most_frequent_char(most_frequent_first_chars)
+        return most_frequent_first_char
+
+    def _extend_delimiters(self, additional_delimiters):
+        delimiters = [(pattern, grp) for pattern, grp in self._delimiters.values()]
+        for delim in additional_delimiters:
+            if not delim or delim in self._delimiters:
+                continue
+            escaped_delimiter = re.escape(delim)
+            pattern = re.compile(r'\s+' + escaped_delimiter)
+            delimiters.append((pattern, 0))
+        return delimiters
+
+    def _reformat_breaklines(self, lines, delimiter):
+        delimiters = self._extend_delimiters([delimiter])
+        for pattern, group_num in delimiters:
+            reformated_lines = []
+            for line in lines:
+                if len(line) > self._too_long_line_treshold:
+                    occs = [m.start(group_num) for m in pattern.finditer(line)]
                     for m in re.finditer(r'"([^"]*)"', line):
                         occs = [occ for occ in occs if not (m.start(0) < occ < m.end(0))]
-                    occs = [occ for occ in occs if line[occ-1] != ',']
                     parts = [line[i:j] for i, j in zip([None] + occs, occs + [None])]
-                    line = '\n'.join(parts)
-            transformed_lines.append(line)
+                    reformated_lines.extend(parts)
+                else:
+                    reformated_lines.append(line)
+            lines = reformated_lines
+        return lines
+
+    def _process(self, lines):
+        striped_lines = [l.strip() for l in lines]
+        most_frequent_first_char = self._get_most_frequent_first_char(striped_lines)
+        transformed_lines = self._reformat_breaklines(lines, most_frequent_first_char)
         return transformed_lines
 
 
 class AttributeExtractor(LineByLineTransformer):
 
-    def __init__(self, attr_tag='<ATTRIBUTE>;<ATTRIBUTE/>'):
+    def __init__(self, attr_tag='<ATTRIBUTE>;<ATTRIBUTE/>', keep_text=True, keep_attributes=False):
+        super().__init__(keep_attributes=keep_attributes)
         self._tag_start, self._tag_end = attr_tag.split(';')
+        self._keep_text = keep_text
 
     def _complete_attribute_line(self, value):
         return self._tag_start + value + self._tag_end
 
-    def _process_internal(self, *args):
+    def _process_internal(self, line, i, lines):
+        if re.match(r'<[A-Z_]+>.*<[A-Z_]+/>', line):
+            return [line]
         return []
 
     def _process(self, lines):
         attr_candidates = []
         for i, line in enumerate(lines):
             attr_candidates.extend(self._process_internal(line, i, lines))
+        if not self._keep_text:
+            return attr_candidates
         lines.extend(attr_candidates)
         return lines
+
+
+class AttributeTagger(AttributeExtractor):
+
+    def __init__(self, attr_tag='<ATTRIBUTE>;<ATTRIBUTE/>', keep_text=False, **kwargs):
+        super().__init__(attr_tag, keep_text, **kwargs)
+
+    def _process_internal(self, line, i, lines):
+        return [self._complete_attribute_line(line)]
 
 
 class QuotedContractNameExtractor(AttributeExtractor):
@@ -264,8 +333,8 @@ class QuotedContractNameExtractor(AttributeExtractor):
     def __init__(self, name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                  false_keywords=['přílo', 'dále', 'jen'],
                  positive_keywords=['názvem'],
-                 context_range=50, min_length=25):
-        super().__init__(name_tag)
+                 context_range=50, min_length=25, **kwargs):
+        super().__init__(name_tag, **kwargs)
         self._false_keywords = false_keywords
         self._positive_keywords = positive_keywords
         self._context_range = context_range
@@ -289,8 +358,8 @@ class StructuredContractNameExtractor(AttributeExtractor):
     def __init__(self, name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                  false_keywords=['přílo', 'dále', 'jen', '"'],
                  positive_keywords=['název'],
-                 context_range=50, min_length=25, delim=':.'):
-        super().__init__(name_tag)
+                 context_range=50, min_length=25, delim=':.', **kwargs):
+        super().__init__(name_tag, **kwargs)
         self._false_keywords = false_keywords
         self._positive_keywords = positive_keywords
         self._context_range = context_range
@@ -314,15 +383,15 @@ class StructuredContractNameExtractor(AttributeExtractor):
 
 class ItemExtractor(AttributeExtractor):
 
-    def __init__(self, item_tag='<ITEM>;<ITEM/>'):
-        super().__init__(item_tag)
+    def __init__(self, item_tag='<ITEM>;<ITEM/>', **kwargs):
+        super().__init__(item_tag, **kwargs)
 
     def _process_internal(self, *args):
         return []
 
     def _process(self, lines):
         selected_lines = self._process_internal(lines)
-        extended_lines = [self._complete_attribute_line(line) for line in selected_lines]
+        extended_lines = [self._complete_attribute_line(line) for line in selected_lines if len(line) != 0]
         lines.extend(extended_lines)
         return lines
 
@@ -349,9 +418,11 @@ class ItemColonExtractor(ItemExtractor):
 
 class ItemEnumerationExtractor(ItemExtractor):
 
-    def __init__(self, enumeration_pattern=r'010(10)*', **kwargs):
+    def __init__(self, enumeration_pattern=r'010(10)*', full_line_length=150, delim=':.', **kwargs):
         super().__init__(**kwargs)
         self._enumeration_pattern = enumeration_pattern
+        self._full_line_length = full_line_length
+        self._delim = delim
 
     def _get_longest_matching_part(self, lines_structure_pattern):
         selected_parts = []
@@ -367,13 +438,26 @@ class ItemEnumerationExtractor(ItemExtractor):
         longest_selected_part = selected_parts[numpy.argmax(selected_parts_lengths)]
         return longest_selected_part
 
+    def _extend_selected_lines(self, lines, selected_indexes):
+        if len(selected_indexes) == 0:
+            return []
+        enum_start_pos = selected_indexes[0]
+        lines_to_check = lines[max(0, enum_start_pos - 5):enum_start_pos][::-1]
+        selected_lines = []
+        for line in lines_to_check:
+            if self._delim in line:
+                selected_lines.append(line.split(self._delim)[-1])
+                return selected_lines[::-1]
+            if len(line) > self._full_line_length:
+                return []
+            selected_lines.append(line)
+        return []
+
 
 class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
 
-    def __init__(self, enumeration_pattern=r'010(10)*', full_line_length=150, delim=':.', **kwargs):
-        super().__init__(enumeration_pattern=enumeration_pattern, **kwargs)
-        self._full_line_length = full_line_length
-        self._delim = delim
+    def __init__(self, enumeration_pattern=r'010(10)*', delim=':.', **kwargs):
+        super().__init__(enumeration_pattern=enumeration_pattern, delim=delim, **kwargs)
 
     def _process_internal(self, lines):
         lengths = numpy.array([len(line) for line in lines])
@@ -382,7 +466,8 @@ class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
         lines_structure[lengths > self._full_line_length] = 2
         lines_structure_pattern = ''.join([str(l) for l in lines_structure])
         longest_selected_part = self._get_longest_matching_part(lines_structure_pattern)
-        selected_lines = [lines[i] for i in longest_selected_part]
+        selected_lines = self._extend_selected_lines(lines, longest_selected_part)
+        selected_lines.extend([lines[i] for i in longest_selected_part])
         if any('\t' in line for line in selected_lines):
             selected_lines = [line for line in selected_lines if '\t' in line]
         selected_lines = [line for line in selected_lines if self._delim not in line]
@@ -408,16 +493,17 @@ class CharItemEnumerationExtractor(ItemEnumerationExtractor):
     def _process_internal(self, lines):
         striped_lines = [l.strip() for l in lines]
         first_chars = [(l[0] if len(l) > 0 else None, i) for i, l in enumerate(striped_lines)]
-        filtred_chars = list(filter(lambda c: c[0] != None, first_chars))
-        most_frequent_first_chars = Counter([c[0] for c in filtred_chars]).most_common()
-        most_frequent_first_char = self._get_most_frequent_char(most_frequent_first_chars)
+        filtered_chars = list(filter(lambda c: c[0] is not None, first_chars))
+        most_frequent_first_char = self._get_most_frequent_char(filtered_chars)
         if not most_frequent_first_char:
             return []
-        lines_structure = ['1' if c[0] == most_frequent_first_char else '0' for c in filtred_chars]
+        lines_structure = ['1' if c[0] == most_frequent_first_char else '0' for c in first_chars]
         lines_structure_pattern = ''.join(lines_structure)
         longest_selected_part = self._get_longest_matching_part(lines_structure_pattern)
         if len(longest_selected_part) > 2:
-            selected_lines = [lines[filtred_chars[i][1]] for i in longest_selected_part]
+            selected_lines_indexes = [first_chars[i][1] for i in longest_selected_part]
+            selected_lines = self._extend_selected_lines(lines, selected_lines_indexes)
+            selected_lines.extend([lines[i] for i in selected_lines_indexes])
             selected_lines = [l.replace(most_frequent_first_char, '').strip('\t .,;') for l in selected_lines]
             selected_lines = [line.strip('\t .') for line in selected_lines]
             return selected_lines
@@ -447,6 +533,7 @@ class HeaderItemEnumerationExtractor(ItemEnumerationExtractor):
 class AddLine(LineByLineTransformer):
 
     def __init__(self, line='=========='):
+        super().__init__()
         self._line = line
 
     def _process(self, lines):
@@ -493,9 +580,12 @@ class SubjectContextPreprocessor:
                 BlankLinesFilter(replacement='\n', top_n_frequency=200, top_n_var_threshold=5,
                                  full_line_threshold=0.85, min_max_line_length=70),
                 ReplaceMarksTransformer(marks_to_transform='„“', result_mark='"'),
-                TooLongLinesTransformer(delimiters=[(r'[\s,\.](-)[\s]+[^(Kč)]', 1)], too_long_line_treshold=200),
+                TooLongLinesTransformer(forbidden_delimiters='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789',
+                                        special_delimiters={'-': (r'[\s,\.](-)[\s]+[^(Kč)]', 1)},
+                                        too_long_line_treshold=200),
                 RegexReplaceTransformer(pattern_to_transform=r'([^\n])[ ]*\n', result_pattern='\g<1>.\n'),
-                RegexReplaceTransformer(pattern_to_transform=r'(([Nn]ázev|[Pp]opis)[^\n,.:"()]{5,})(\s[A-Z][^\n:]{10})', result_pattern='\g<1>:\g<3>'),
+                RegexReplaceTransformer(pattern_to_transform=r'(([Nn]ázev|[Pp]opis)[^\n,.:"()]{5,})(\s[A-Z][^\n:]{10})',
+                                        result_pattern='\g<1>:\g<3>'),
                 ReplaceMarksTransformer(marks_to_transform=[':'], result_mark=':.'),
                 ReplaceMarksTransformer(marks_to_transform=['..'], result_mark='.'),
                 RegexReplaceTransformer(pattern_to_transform=r'\([^\n()]*\)', result_pattern=''),
