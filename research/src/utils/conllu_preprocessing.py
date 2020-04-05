@@ -1,6 +1,22 @@
 import re
 
 from udapi.block.util.filter import Filter
+from udapi.core.document import Document
+
+
+def create_conllu_document(decomposition):
+    doc = Document()
+    doc.from_conllu_string(decomposition)
+    return doc
+
+
+def conllu_doc_to_str(document):
+    lines = []
+    for bundle in document.bundles:
+        for tree in bundle.trees:
+            lines.append(tree.compute_text())
+    text = '\n'.join(lines)
+    return text
 
 
 class UdapiTransformer:
@@ -166,10 +182,11 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
                  banned_upos_tags=['PUNCT', 'SYM', 'NUM', 'DET'],
                  banned_node_lemmas=['smlouva', 'předmět', 'uzavření', 'náklad', 'nebezpečí', 'specifikace',
                                      'dodavatel', 'závazek', 'dokumentace', 'rozsah', 'plnění', 'zakázka',
-                                     'dohoda', 'poplatek', 'požádání', 'záměr', 'dodatek'],
+                                     'dohoda', 'poplatek', 'požádání', 'záměr', 'dodatek', 'podmínka', 'standard',
+                                     'norma', 'kvalita'],
                  banned_submitter_lemmas=['objednatel', 'kupující', 'zadavate[lt]', 'projektant'],
                  banned_loctime_lemmas=['místo', 'doba'],
-                 previous_banned_lemmas=['zbytný', 'pokud', 'dodatečný', 'dokumentace'],
+                 previous_banned_lemmas=['zbytný', 'pokud', 'dodatečný', 'dokumentace', 'nutný'],
                  preceding_banned_lemmas=['specifikovaný', 'povinný', 'oprávněný', 'možný', 'uvedený']):
 
         self._target_dep_relations = target_dep_relations
@@ -346,7 +363,20 @@ class ConlluSubjectContextPreprocessor:
         self._transformers = transformers \
             if transformers is not None else \
             [
-                UdapiWordOccurrenceSentenceFilter(keywords=['cena', 'hodnota', 'DPH']),
+                UdapiWordOccurrencePartSentenceFilter(keywords=['cena', 'hodnota', 'DPH']),
+                UdapiWordOccurrencePartSentenceFilter(keywords=['příloha', 'dále', 'jen']),
+                NonSubjectPartSentenceFilter(
+                    target_dep_relations=['nsubj', 'obj', 'obl', 'nmod'],
+                    target_verb_lemmas=['zavazovat', 'doda(t|ný)', 'zajistit', 'prov(edený|ést)',
+                                        'zahrnovat', 'spočíva(t|jící)', 'rozumět'],
+                    banned_upos_tags=['PUNCT', 'SYM', 'NUM', 'DET'],
+                    banned_node_lemmas=['smlouva', 'předmět', 'uzavření', 'náklad', 'nebezpečí', 'specifikace',
+                                        'dodavatel', 'závazek', 'dokumentace', 'rozsah', 'plnění', 'zakázka',
+                                        'dohoda', 'poplatek', 'požádání', 'záměr', 'dodatek'],
+                    banned_submitter_lemmas=['objednatel', 'kupující', 'zadavate[lt]', 'projektant'],
+                    banned_loctime_lemmas=['místo', 'doba'],
+                    previous_banned_lemmas=['zbytný', 'pokud', 'dodatečný', 'dokumentace'],
+                    preceding_banned_lemmas=['specifikovaný', 'povinný', 'oprávněný', 'možný', 'uvedený']),
                 EmptyBundlesFilter(),
             ]
 

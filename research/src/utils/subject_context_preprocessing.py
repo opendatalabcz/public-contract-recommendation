@@ -171,9 +171,10 @@ class BlankLinesFilter3(BlankLinesFilter):
 
 class IrrelevantLinesFilter(LineByLineTransformer):
 
-    def __init__(self, keywords=['strana', 'stránka'], lower=True):
+    def __init__(self, keywords=['strana', 'stránka'], max_line_length=75, lower=True):
         super().__init__()
         self._keywords = keywords
+        self._max_line_length = max_line_length
         self._lower = lower
 
     def _process(self, lines):
@@ -182,8 +183,9 @@ class IrrelevantLinesFilter(LineByLineTransformer):
             keywords = [keyword.lower() for keyword in self._keywords]
         filtered_lines = []
         for line in lines:
-            if any(keyword in (line.lower() if self._lower else line) for keyword in keywords):
-                continue
+            if len(line) < self._max_line_length:
+                if any(keyword in (line.lower() if self._lower else line) for keyword in keywords):
+                    continue
             filtered_lines.append(line)
         return filtered_lines
 
@@ -241,7 +243,7 @@ class TooLongLinesTransformer(LineByLineTransformer):
         super().__init__()
         self._forbidden_delimiters = forbidden_delimiters
         self._delimiters = {delim: (re.compile(special_delimiters[delim][0]), special_delimiters[delim][1])
-                                    for delim in special_delimiters}
+                            for delim in special_delimiters}
         self._too_long_line_treshold = too_long_line_treshold
 
     def _get_most_frequent_char(self, chars_frequencies):
@@ -262,9 +264,12 @@ class TooLongLinesTransformer(LineByLineTransformer):
         return most_frequent_first_char
 
     def _extend_delimiters(self, additional_delimiters):
-        delimiters = [(pattern, grp) for pattern, grp in self._delimiters.values()]
+        delimiters = []
         for delim in additional_delimiters:
-            if not delim or delim in self._delimiters:
+            if not delim:
+                continue
+            if delim in self._delimiters:
+                delimiters.append(self._delimiters[delim])
                 continue
             escaped_delimiter = re.escape(delim)
             pattern = re.compile(r'\s+' + escaped_delimiter)
@@ -339,10 +344,11 @@ class QuotedContractNameExtractor(AttributeExtractor):
         self._positive_keywords = positive_keywords
         self._context_range = context_range
         self._min_length = min_length
+        self._pattern = re.compile(r'"([^"]*)"')
 
     def _process_internal(self, line, i, lines):
         name_candidates = []
-        for match in re.finditer(r'"([^"]*)"', line):
+        for match in self._pattern.finditer(line):
             start = match.start(0)
             context = line[max(0, start - self._context_range):start]
             name = match.group(1)
@@ -357,27 +363,30 @@ class StructuredContractNameExtractor(AttributeExtractor):
 
     def __init__(self, name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                  false_keywords=['přílo', 'dále', 'jen', '"'],
-                 positive_keywords=['název'],
-                 context_range=50, min_length=25, delim=':.', **kwargs):
+                 positive_keywords=['název', 'stavb', 'projekt', 'předmět'],
+                 context_range=30, min_length=25, delims=[':.'], **kwargs):
         super().__init__(name_tag, **kwargs)
         self._false_keywords = false_keywords
         self._positive_keywords = positive_keywords
         self._context_range = context_range
         self._min_length = min_length
-        self._delim = delim
+        self._patterns = [re.compile(delim) for delim in delims]
 
     def _process_internal(self, line, i, lines):
         name_candidates = []
-        if any(keyword.lower() in line.lower() for keyword in self._positive_keywords):
-            line_parts = line.split(self._delim)
-            if len(line_parts) > 1:
-                name = self._delim.join(line_parts[1:]).strip()
-                if (len(name) < self._min_length) and (len(lines) > i):
-                    name = lines[i + 1]
-                name = name.strip('. \t')
-                if (len(name) > self._min_length) and \
-                        (not any(keyword in name.lower() for keyword in self._false_keywords)):
-                    name_candidates.append(self._complete_attribute_line(name))
+        for pattern in self._patterns:
+            for match in pattern.finditer(line):
+                start = match.start(0)
+                end = match.end(0)
+                context = line[max(0, start - self._context_range):start]
+                if any(keyword.lower() in context.lower() for keyword in self._positive_keywords):
+                    name = line[end:].strip()
+                    if (len(name) < self._min_length) and (len(lines) > i):
+                        name = lines[i + 1]
+                    name = name.strip('. \t')
+                    if (len(name) > self._min_length) and \
+                            (not any(keyword in name.lower() for keyword in self._false_keywords)):
+                        name_candidates.append(self._complete_attribute_line(name))
         return name_candidates
 
 
@@ -456,14 +465,24 @@ class ItemEnumerationExtractor(ItemExtractor):
 
 class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
 
-    def __init__(self, enumeration_pattern=r'010(10)*', delim=':.', **kwargs):
+    def __init__(self, enumeration_pattern=r'010(10)*', delim=':.',
+                 **kwargs):
         super().__init__(enumeration_pattern=enumeration_pattern, delim=delim, **kwargs)
+        self._upper_case_chars = 'AÁBCČDĎEÉĚFGHIÍJKLMNŇOÓPQRŘSŠTŤUÚŮVWXYÝZŽ '
+
+    def _upper_case_lines(self, lines):
+        upper_case_lines = []
+        for line in lines:
+            rat = chars_occurrence_ratio(line, self._upper_case_chars)
+            upper_case_lines.append(rat > 0.95)
+        return upper_case_lines
 
     def _process_internal(self, lines):
         lengths = numpy.array([len(line) for line in lines])
         lines_structure = numpy.zeros(len(lengths), numpy.int32)
-        lines_structure[lengths > 0] = 1
+        lines_structure[lengths > 5] = 1
         lines_structure[lengths > self._full_line_length] = 2
+        lines_structure[self._upper_case_lines(lines)] = 3
         lines_structure_pattern = ''.join([str(l) for l in lines_structure])
         longest_selected_part = self._get_longest_matching_part(lines_structure_pattern)
         selected_lines = self._extend_selected_lines(lines, longest_selected_part)
@@ -494,14 +513,15 @@ class CharItemEnumerationExtractor(ItemEnumerationExtractor):
         striped_lines = [l.strip() for l in lines]
         first_chars = [(l[0] if len(l) > 0 else None, i) for i, l in enumerate(striped_lines)]
         filtered_chars = list(filter(lambda c: c[0] is not None, first_chars))
-        most_frequent_first_char = self._get_most_frequent_char(filtered_chars)
+        most_frequent_first_chars = Counter([c[0] for c in filtered_chars]).most_common()
+        most_frequent_first_char = self._get_most_frequent_char(most_frequent_first_chars)
         if not most_frequent_first_char:
             return []
-        lines_structure = ['1' if c[0] == most_frequent_first_char else '0' for c in first_chars]
+        lines_structure = ['1' if c[0] == most_frequent_first_char else '0' for c in filtered_chars]
         lines_structure_pattern = ''.join(lines_structure)
         longest_selected_part = self._get_longest_matching_part(lines_structure_pattern)
         if len(longest_selected_part) > 2:
-            selected_lines_indexes = [first_chars[i][1] for i in longest_selected_part]
+            selected_lines_indexes = [filtered_chars[i][1] for i in longest_selected_part]
             selected_lines = self._extend_selected_lines(lines, selected_lines_indexes)
             selected_lines.extend([lines[i] for i in selected_lines_indexes])
             selected_lines = [l.replace(most_frequent_first_char, '').strip('\t .,;') for l in selected_lines]
@@ -572,7 +592,7 @@ class SubjectContextPreprocessor:
             [
                 NumeralLinesFilter(too_many_numerals_ratio_threshold=0.5),
                 TooShortLinesFilter(too_short_line_threshold=5),
-                IrrelevantLinesFilter(keywords=['strana', 'stránka'], lower=True),
+                IrrelevantLinesFilter(keywords=['strana', 'stránka'], max_line_length=75, lower=True),
                 IrrelevantLinesRegexFilter(patterns=[r'www', r'[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}']),  # email
                 RegexReplaceTransformer(pattern_to_transform=r',([\s]+[A-Z][a-z ])', result_pattern='.\g<1>'),
                 RegexReplaceTransformer(pattern_to_transform=r'\n[ \t]*(.{0,1}[\d]+.{0,1})+[ \t]*',  # paragraph numbers
@@ -593,10 +613,11 @@ class SubjectContextPreprocessor:
                 QuotedContractNameExtractor(name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                                             false_keywords=['přílo', 'dále', 'jen'],
                                             positive_keywords=['názvem'],
-                                            context_range=50, min_length=25),
+                                            context_range=30, min_length=25),
                 StructuredContractNameExtractor(name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                                                 false_keywords=['přílo', 'dále', 'jen', '"'],
-                                                positive_keywords=['název'], min_length=5, delim=':.'),
+                                                positive_keywords=['název', 'stavb', 'projekt'], min_length=5,
+                                                delims=[':.']),
                 ItemColonExtractor(item_tag='<ITEM>;<ITEM/>', patterns=[r'(zboží|položk).{,10}:']),
                 StructureItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', enumeration_pattern=r'010(10)*',
                                                   full_line_length=150, delim=':.'),

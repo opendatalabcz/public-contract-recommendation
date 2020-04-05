@@ -3,7 +3,8 @@ import re
 import pandas
 import numpy
 
-from .document_processing import find_all_occurrences_in_string, get_current_line, flatten_column
+from .document_processing import find_all_occurrences_in_string, get_current_line, flatten_column, \
+    chars_occurrence_ratio
 from .similarity import JaccardSimilarityMachine
 from .subject_extraction import ReferenceSubjectContextExtractor
 
@@ -49,9 +50,23 @@ def validate_subj_contexts_v2(df_contracts, vzdirs):
     return df_contracts
 
 
-class SubjectContextExtractor():
+DEF_KEYWORDS = {
+    'Předmět smlouvy': 10,
+    'Předmět díla': 10,
+    'Předmět plnění': 10,
+    'Předmět veřejné zakázky': 10,
+    'Vymezení předmětu': 10,
+    'Vymezení plnění': 10,
+    'Název veřejné zakázky': 3,
+    'Veřejná zakázka': 1,
+    'Veřejné zakázce': 1,
+    'Předmět': 1
+}
 
-    def __init__(self, keywords={"Předmět smlouvy": 1}, subj_range=2000):
+
+class SubjectContextExtractor:
+
+    def __init__(self, keywords=DEF_KEYWORDS, subj_range=2000):
         self._keywords = keywords
         self._subj_range = subj_range
 
@@ -90,6 +105,8 @@ class SubjectContextExtractor():
                 # Chars 'I' preceding the pattern (chapter numbering)
                 if text[max(o - 20, 0):o].count('I') > 1:
                     koef += 2
+                # Simple sentences following
+                koef += chars_occurrence_ratio(text[min(o + 50, len(text)): min(o + 100, len(text))])
                 rat *= koef
                 occurrences.append({'keyword': matched, 'rat': rat, 'occ': o})
         return occurrences

@@ -33,6 +33,8 @@ def find_all_occurrences_in_string(pattern, text, lower=True):
 
 
 def chars_occurrence_ratio(text, chars='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž'):
+    if len(text) == 0:
+        return 0
     count_mask = count_occurence_vector(chars)
     count_mask[0] = 0
     vec = count_occurence_vector(text)
