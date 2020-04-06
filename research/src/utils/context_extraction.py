@@ -5,50 +5,6 @@ import numpy
 
 from .document_processing import find_all_occurrences_in_string, get_current_line, flatten_column, \
     chars_occurrence_ratio
-from .similarity import JaccardSimilarityMachine
-from .subject_extraction import ReferenceSubjectContextExtractor
-
-
-def save_valid_contexts(df_contracts, df_ref_documents):
-    for index, row in df_contracts[df_contracts.valid == True].iterrows():
-        path = df_ref_documents[df_ref_documents.contr_name == row.contr_name].iloc[0]['doc_path'].split('\\')[:-1]
-        path.append('subj_context.txt')
-        completed_path = '/'.join(path)
-        with open(completed_path, 'w', encoding='utf8') as f:
-            f.write(row.subj_context)
-
-
-def validate_subj_contexts(df_contracts, vzdirs):
-    df_contracts['valid_rat'] = 0
-    df_contracts['ref_context'] = None
-    subj_context_paths = [path for path in glob.glob(vzdirs) if 'subj_context.txt' in path]
-    for path in subj_context_paths:
-        contr_name = '/'.join(path.split('\\')[1:4])
-        row = df_contracts[df_contracts.contr_name == contr_name].iloc[0]
-        with open(path, 'r', encoding='utf8') as f:
-            ref_context = f.read()
-        valid_rat = JaccardSimilarityMachine().compute(row['subj_context'], ref_context)
-        df_contracts.valid_rat.loc[row.name] = valid_rat
-        df_contracts.ref_context.loc[row.name] = ref_context
-    return df_contracts
-
-
-def validate_subj_contexts_v2(df_contracts, vzdirs):
-    df_contracts['valid_rat'] = 0
-    df_contracts['ref_context'] = None
-    ref_paths = [path for path in glob.glob(vzdirs) if 'test_src' not in path]
-    for path in ref_paths:
-        contr_name = '/'.join(path.split('\\')[1:4])
-        row = df_contracts[df_contracts.contr_name == contr_name]
-        if len(row) > 0:
-            with open(path + '/_ref.json', 'r', encoding='utf8') as f:
-                ref = f.read()
-                ref_context = ReferenceSubjectContextExtractor(path).extract()
-            valid_rat = JaccardSimilarityMachine().compute(row.iloc[0]['subj_context'], ref_context)
-            df_contracts.valid_rat.loc[row.iloc[0].name] = valid_rat
-            df_contracts.ref_context.loc[row.iloc[0].name] = ref_context
-    return df_contracts
-
 
 DEF_KEYWORDS = {
     'Předmět smlouvy': 10,
@@ -57,16 +13,17 @@ DEF_KEYWORDS = {
     'Předmět veřejné zakázky': 10,
     'Vymezení předmětu': 10,
     'Vymezení plnění': 10,
+    'Popis předmětu': 10,
     'Název veřejné zakázky': 3,
     'Veřejná zakázka': 1,
     'Veřejné zakázce': 1,
-    'Předmět': 1
+    'Předmět': 1,
+    'Popis': 1
 }
-
 
 class SubjectContextExtractor:
 
-    def __init__(self, keywords=DEF_KEYWORDS, subj_range=2000):
+    def __init__(self, keywords=DEF_KEYWORDS, subj_range=2040):
         self._keywords = keywords
         self._subj_range = subj_range
 
@@ -105,8 +62,12 @@ class SubjectContextExtractor:
                 # Chars 'I' preceding the pattern (chapter numbering)
                 if text[max(o - 20, 0):o].count('I') > 1:
                     koef += 2
+                # Nearly noun 'Zbozi' after the pattern ()
+                if 'Zboží' in text[o: min(o + 150, len(text))]:
+                    koef *= 0.5
                 # Simple sentences following
                 koef += chars_occurrence_ratio(text[min(o + 50, len(text)): min(o + 100, len(text))])
+
                 rat *= koef
                 occurrences.append({'keyword': matched, 'rat': rat, 'occ': o})
         return occurrences
@@ -125,7 +86,7 @@ class SubjectContextExtractor:
         subj_context = text[start:end]
         return subj_context
 
-    def get_subject_context_start(self, text):
+    def get_subject_context_starts(self, text):
         bin_size = int(self._subj_range / 3)
         bins = int(len(text) / bin_size) + 1
         text = text.ljust(bins * bin_size)
@@ -136,40 +97,61 @@ class SubjectContextExtractor:
         hist = numpy.histogram(df['occ'], bins, weights=df['rat'], range=(0, len(text)))
 
         score = numpy.convolve(hist[0], numpy.array([1, 1, 2, -2, -1, -1]))[2:-3]
-        subj_bin = numpy.argmax(score)
 
-        start = subj_bin * bin_size
-        return start
+        max_score = score.max()
+        threshold = max_score * 2 / 3
+        top_bins = numpy.argwhere(score > threshold).flatten()
+
+        starts = [subj_bin * bin_size for subj_bin in top_bins]
+        return starts
 
     def get_subject_context_end(self, text, start):
         return min(start + self._subj_range, len(text))
 
-    def get_subject_context(self, text):
-        start = self.get_subject_context_start(text)
-        end = self.get_subject_context_end(text, start)
-        subj_context = text[start:end]
-        return subj_context
+    def get_subject_context_ends(self, text, starts):
+        return [self.get_subject_context_end(text, start) for start in starts]
+
+    def get_subject_contexts(self, text):
+        starts = self.get_subject_context_starts(text)
+        ends = self.get_subject_context_ends(text, starts)
+        subj_contexts = [text[start:end] for start, end in zip(starts, ends)]
+        return subj_contexts
+
+    def process(self, text):
+        return self.get_subject_contexts(text)
 
     def show_occurrence_distribution(self, text):
         bin_size = int(self._subj_range / 3)
         bins = int(len(text) / bin_size) + 1
-        text = text.rjust(bins * bin_size)
+        text = text.ljust(bins * bin_size)
 
         occurrences = self.get_all_occurrences(text)
-        df = pandas.DataFrame(occurrences)
+        df = pandas.DataFrame(occurrences, columns=['keyword', 'rat', 'occ'])
+
         hist = numpy.histogram(df['occ'], bins, weights=df['rat'], range=(0, len(text)))
-        pandas.DataFrame(hist[0]).plot.bar()
+        score = numpy.convolve(hist[0], numpy.array([1, 1, 2, -2, -1, -1]))[2:-3]
+
+        sorted_bins = numpy.argsort(score)[::-1]
+        top_bins = sorted_bins[:min(5, len(sorted_bins))]
+        starts = [subj_bin * bin_size for subj_bin in top_bins]
+
+        ticks = [str(s) + ' (' + str(b) + ')' for b, s in zip(top_bins, starts)]
+        ax = pandas.DataFrame(hist[0]).plot.bar(figsize=(15, 5), xticks=top_bins)
+        ax.set_xticklabels(ticks, rotation=45)
+        ax = pandas.DataFrame(score).plot.bar(figsize=(15, 7), xticks=top_bins)
+        ax.set_xticklabels(ticks, rotation=45)
 
 
-class SubjectContextEndDetector():
+class SubjectContextEndDetector:
 
-    def __init__(self, text, subj_range=2000):
+    def __init__(self, text, subj_range=2040, multip=3):
         self._text = text
         self._subj_range = subj_range
+        self._multip = multip
         self._end_position = None
 
     def detect(self, start_position, end_position=None):
-        self._end_position = min(start_position + self._subj_range * 5, len(self._text))
+        self._end_position = min(start_position + self._subj_range * self._multip, len(self._text))
         return self._end_position
 
 
@@ -189,7 +171,10 @@ class SubjectContextEndNumberingDetector(SubjectContextEndDetector):
             if len(end_occurrences) > 0:
                 for occ in end_occurrences:
                     occ = start_position + occ
-                    num = int(re.search('[\d]+', self._text[occ:occ + 10]).group(0))
+                    m = re.search('[\d]+', self._text[occ:occ + 10])
+                    if m is None:
+                        continue
+                    num = int(m.group(0))
                     if (num > article_num) and (num < article_num + 3):
                         current_line = get_current_line(self._text, occ + 1)
                         if len(current_line) < 50:
@@ -314,16 +299,19 @@ class AdvancedSubjectContextExtractor(SubjectContextExtractor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def get_subject_context_start(self, text):
-        raw_context_start = super().get_subject_context_start(text)
-        raw_context_end = super().get_subject_context_end(text, raw_context_start)
-        start = raw_context_start
-        start_occurrences = self.get_all_occurrences(text[raw_context_start:raw_context_end])
-        df = pandas.DataFrame(start_occurrences, columns=['keyword', 'rat', 'occ'])
-        df = df.sort_values(['rat'], ascending=False)
-        if len(df.index) > 0:
-            start += df.iloc[0]['occ']
-        return start
+    def get_subject_context_starts(self, text):
+        raw_context_starts = super().get_subject_context_starts(text)
+        starts = []
+        for start in raw_context_starts:
+            end = super().get_subject_context_end(text, start)
+            start_occurrences = self.get_all_occurrences(text[start:end])
+            df = pandas.DataFrame(start_occurrences, columns=['keyword', 'rat', 'occ'])
+            df = df.sort_values(['rat'], ascending=False)
+            if len(df.index) > 0:
+                start += df.iloc[0]['occ']
+            if start not in starts:
+                starts.append(start)
+        return starts
 
     def get_subject_context_end(self, text, start_position):
         end_position = SubjectContextEndDetector(text, self._subj_range).detect(start_position)

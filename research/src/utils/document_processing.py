@@ -73,6 +73,12 @@ def get_current_line(text, pos):
     return text[start:end]
 
 
+def apply_transformation(data, transformation):
+    if isinstance(data, list):
+        return [transformation(text) for text in data]
+    return transformation(data)
+
+
 class DatabaseDocumentLoader():
 
     def __init__(self, connection):

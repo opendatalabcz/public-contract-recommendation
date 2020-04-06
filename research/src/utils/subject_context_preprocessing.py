@@ -192,7 +192,8 @@ class IrrelevantLinesFilter(LineByLineTransformer):
 
 class IrrelevantLinesRegexFilter(LineByLineTransformer):
 
-    def __init__(self, patterns=[r'www', r'[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}']):
+    def __init__(self, patterns=[r'www', r'[\w\-\.]+\s*@\s*([\w\-]+\.)+[\w\-]{2,4}',
+                                 '(\+\d{2,3}){0,1}(\s{0,1}\d{3}){3}']):
         super().__init__()
         self._patterns = patterns
 
@@ -381,7 +382,7 @@ class StructuredContractNameExtractor(AttributeExtractor):
                 context = line[max(0, start - self._context_range):start]
                 if any(keyword.lower() in context.lower() for keyword in self._positive_keywords):
                     name = line[end:].strip()
-                    if (len(name) < self._min_length) and (len(lines) > i):
+                    if (len(name) < self._min_length) and (len(lines) > i +1):
                         name = lines[i + 1]
                     name = name.strip('. \t')
                     if (len(name) > self._min_length) and \
@@ -530,6 +531,46 @@ class CharItemEnumerationExtractor(ItemEnumerationExtractor):
         return []
 
 
+class CharTupleItemEnumerationExtractor(ItemEnumerationExtractor):
+
+    def __init__(self, enumeration_pattern=r'1+', min_char_occurrences=3,
+                 forbidden_tuples=['Vy', 'Př', 'Za', 'Pr', 'Ob', 'Po'], **kwargs):
+        super().__init__(enumeration_pattern=enumeration_pattern, **kwargs)
+        self._forbidden_tuples = forbidden_tuples
+        self._min_char_occurrences = min_char_occurrences
+
+    def _get_most_frequent_chars(self, chars_frequencies):
+        most_frequent_chars = []
+        for c in chars_frequencies:
+            if c[0] not in self._forbidden_tuples and c[1] > self._min_char_occurrences:
+                most_frequent_chars.append(c[0])
+        return most_frequent_chars
+
+    def _get_selected_lines(self, most_frequent_first_char, lines, filtered_chars):
+        lines_structure = ['1' if c[0] == most_frequent_first_char else '0' for c in filtered_chars]
+        lines_structure_pattern = ''.join(lines_structure)
+        longest_selected_part = self._get_longest_matching_part(lines_structure_pattern)
+        if len(longest_selected_part) > 2:
+            selected_lines_indexes = [filtered_chars[i][1] for i in longest_selected_part]
+            selected_lines = self._extend_selected_lines(lines, selected_lines_indexes)
+            selected_lines.extend([lines[i] for i in selected_lines_indexes])
+            selected_lines = [l.replace(most_frequent_first_char, '').strip('\t .,;') for l in selected_lines]
+            selected_lines = [line.strip('\t .') for line in selected_lines]
+            return selected_lines
+        return []
+
+    def _process_internal(self, lines):
+        striped_lines = [l.strip() for l in lines]
+        first_chars = [(l[0:2] if len(l) > 1 else None, i) for i, l in enumerate(striped_lines)]
+        filtered_chars = list(filter(lambda c: c[0] is not None, first_chars))
+        most_frequent_first_chars = Counter([c[0] for c in filtered_chars]).most_common()
+        most_frequent_first_chars = self._get_most_frequent_chars(most_frequent_first_chars)
+        selected_lines = []
+        for most_frequent_first_char in most_frequent_first_chars:
+            selected_lines.extend(self._get_selected_lines(most_frequent_first_char, lines, filtered_chars))
+        return selected_lines
+
+
 class HeaderItemEnumerationExtractor(ItemEnumerationExtractor):
 
     def __init__(self, header_pattern='[Pp]ředmět.{0,20}je.{0,5}$', **kwargs):
@@ -592,13 +633,15 @@ class SubjectContextPreprocessor:
             [
                 NumeralLinesFilter(too_many_numerals_ratio_threshold=0.5),
                 TooShortLinesFilter(too_short_line_threshold=5),
-                IrrelevantLinesFilter(keywords=['strana', 'stránka'], max_line_length=75, lower=True),
-                IrrelevantLinesRegexFilter(patterns=[r'www', r'[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}']),  # email
+                IrrelevantLinesFilter(keywords=['strana', 'stránka', 'e-mail'], max_line_length=75, lower=True),
+                IrrelevantLinesFilter(keywords=['Tel:', 'Fax:', 'IČ:', 'IČO:', 'DIČ:'], max_line_length=75, lower=False),
+                IrrelevantLinesRegexFilter(patterns=[r'www', r'[\w\-\.]+\s*@\s*([\w\-]+\.)+[\w\-]{2,4}']),  # email
+                IrrelevantLinesRegexFilter(patterns=[r'(\+\d{2,3}){0,1}(\s{0,1}\d{3}){3}']),  # phone
                 RegexReplaceTransformer(pattern_to_transform=r',([\s]+[A-Z][a-z ])', result_pattern='.\g<1>'),
                 RegexReplaceTransformer(pattern_to_transform=r'\n[ \t]*(.{0,1}[\d]+.{0,1})+[ \t]*',  # paragraph numbers
                                         result_pattern='\n'),
                 BlankLinesFilter(replacement='\n', top_n_frequency=200, top_n_var_threshold=5,
-                                 full_line_threshold=0.85, min_max_line_length=70),
+                                 full_line_threshold=0.85, min_max_line_length=0),
                 ReplaceMarksTransformer(marks_to_transform='„“', result_mark='"'),
                 TooLongLinesTransformer(forbidden_delimiters='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789',
                                         special_delimiters={'-': (r'[\s,\.](-)[\s]+[^(Kč)]', 1)},
@@ -621,9 +664,12 @@ class SubjectContextPreprocessor:
                 ItemColonExtractor(item_tag='<ITEM>;<ITEM/>', patterns=[r'(zboží|položk).{,10}:']),
                 StructureItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', enumeration_pattern=r'010(10)*',
                                                   full_line_length=150, delim=':.'),
-                CharItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>',
-                                             enumeration_pattern=r'1+',
-                                             forbidden_chars='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789'),
+                # CharItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>',
+                #                              enumeration_pattern=r'1+',
+                #                              forbidden_chars='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789'),
+                CharTupleItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>',
+                                                  enumeration_pattern=r'1+', min_char_occurrences=3,
+                                                  forbidden_tuples=['Vy', 'Př', 'Za', 'Pr', 'Ob', 'Po']),
                 HeaderItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', header_pattern='[Pp]ředmět.{0,20}je.{0,5}$'),
             ]
 
@@ -632,6 +678,9 @@ class SubjectContextPreprocessor:
             text = transformer.process(text)
         return text
 
-    def process(self, text):
-        text = self.transform_text(text)
-        return text
+    def process(self, data):
+        if isinstance(data, list):
+            return [self.transform_text(text) for text in data]
+        if isinstance(data, str):
+            return self.transform_text(data)
+        return None

@@ -10,6 +10,11 @@ def create_conllu_document(decomposition):
     return doc
 
 
+def create_conllu_sentence_list(decomposition):
+    doc = create_conllu_document(decomposition)
+    return [b.trees[0] for b in doc.bundles]
+
+
 def conllu_doc_to_str(document):
     lines = []
     for bundle in document.bundles:
@@ -176,14 +181,14 @@ class SubmitterPartSentenceFilter(UdapiTransformer):
 class NonSubjectPartSentenceFilter(UdapiTransformer):
 
     def __init__(self,
-                 target_dep_relations=['nsubj', 'obj', 'obl', 'nmod'],
+                 target_dep_relations=['nsubj', 'obj', 'obl', 'obl:arg', 'nmod'],
                  target_verb_lemmas=['zavazovat', 'doda(t|ný)', 'zajistit', 'prov(edený|ést)',
                                      'zahrnovat', 'spočíva(t|jící)', 'rozumět'],
                  banned_upos_tags=['PUNCT', 'SYM', 'NUM', 'DET'],
                  banned_node_lemmas=['smlouva', 'předmět', 'uzavření', 'náklad', 'nebezpečí', 'specifikace',
                                      'dodavatel', 'závazek', 'dokumentace', 'rozsah', 'plnění', 'zakázka',
                                      'dohoda', 'poplatek', 'požádání', 'záměr', 'dodatek', 'podmínka', 'standard',
-                                     'norma', 'kvalita'],
+                                     'norma', 'kvalita', 'prohlášení', 'jiný'],
                  banned_submitter_lemmas=['objednatel', 'kupující', 'zadavate[lt]', 'projektant'],
                  banned_loctime_lemmas=['místo', 'doba'],
                  previous_banned_lemmas=['zbytný', 'pokud', 'dodatečný', 'dokumentace', 'nutný'],
@@ -208,7 +213,8 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
         self._previous_banned_lemma_finder = PreviousNodeFinder(('lemma', self._previous_banned_lemmas), 5)
         self._preceding_banned_lemma_finder = PrecedingNodeFinder(('lemma', self._preceding_banned_lemmas), 4)
         self._previous_target_verb_finder = PreviousNodeFinder([('lemma', self._target_verb_lemmas),
-                                                                [('deprel', ['cop']), ('feats[Polarity]', 'Pos')]], 5)
+                                                                [('lemma', 'být'), ('deprel', ['cop', 'root']),
+                                                                 ('feats[Polarity]', 'Pos')]], 5)
 
     def _get_candidate_nodes(self, tree):
         candidates = []
@@ -247,14 +253,14 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
                 continue
 
             if NodeFinder(('deprel', ['nmod'])).check_node_attributes(n):
-                if PrecedingNodeFinder(('lemma', ['pořízení', 'uzavřen(í|ý)'])).find(n):
+                if PrecedingNodeFinder(('lemma', ['pořízení', 'uzavřen(í|ý)', 'zabezpečení'])).find(n):
                     candidates.append(n)
                 continue
 
             if not self._previous_target_verb_finder.find(n):
                 continue
 
-            if NodeFinder(('deprel', ['obl'])).check_node_attributes(n):
+            if NodeFinder(('deprel', ['obl', 'obl:arg'])).check_node_attributes(n):
                 if not NodeFinder(('lemma', ['realizace'])).check_node_attributes(n):
                     if not PreviousNodeFinder(('lemma', ['předmět']), 5).find(n):
                         candidates.append(n)
@@ -274,10 +280,11 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
                 break
             n = candidates[i]
             i += 1
-            if not (extended_candidates and n.is_descendant_of(extended_candidates[-1])):
-                extended_candidates.append(n)
-            else:
-                n = extended_candidates[-1]
+            extended_candidates.append(n)
+            # if not (extended_candidates and n.is_descendant_of(extended_candidates[-1])):
+            #     extended_candidates.append(n)
+            # else:
+            #     n = extended_candidates[-1]
             if n.descendants and n.descendants[-1].next_node != n:
                 n = n.descendants[-1]
             while True:
@@ -365,22 +372,16 @@ class ConlluSubjectContextPreprocessor:
             [
                 UdapiWordOccurrencePartSentenceFilter(keywords=['cena', 'hodnota', 'DPH']),
                 UdapiWordOccurrencePartSentenceFilter(keywords=['příloha', 'dále', 'jen']),
-                NonSubjectPartSentenceFilter(
-                    target_dep_relations=['nsubj', 'obj', 'obl', 'nmod'],
-                    target_verb_lemmas=['zavazovat', 'doda(t|ný)', 'zajistit', 'prov(edený|ést)',
-                                        'zahrnovat', 'spočíva(t|jící)', 'rozumět'],
-                    banned_upos_tags=['PUNCT', 'SYM', 'NUM', 'DET'],
-                    banned_node_lemmas=['smlouva', 'předmět', 'uzavření', 'náklad', 'nebezpečí', 'specifikace',
-                                        'dodavatel', 'závazek', 'dokumentace', 'rozsah', 'plnění', 'zakázka',
-                                        'dohoda', 'poplatek', 'požádání', 'záměr', 'dodatek'],
-                    banned_submitter_lemmas=['objednatel', 'kupující', 'zadavate[lt]', 'projektant'],
-                    banned_loctime_lemmas=['místo', 'doba'],
-                    previous_banned_lemmas=['zbytný', 'pokud', 'dodatečný', 'dokumentace'],
-                    preceding_banned_lemmas=['specifikovaný', 'povinný', 'oprávněný', 'možný', 'uvedený']),
+                NonSubjectPartSentenceFilter(),
                 EmptyBundlesFilter(),
             ]
 
-    def process(self, conllu_document):
+    def transform_document(self, conllu_document):
         for transformer in self._transformers:
             conllu_document = transformer.process(conllu_document)
         return conllu_document
+
+    def process(self, data):
+        if isinstance(data, list):
+            return [self.transform_document(doc) for doc in data]
+        return self.transform_document(data)
