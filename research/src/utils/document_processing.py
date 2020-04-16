@@ -2,6 +2,7 @@ import numpy
 import re
 import pandas
 import glob
+import time
 
 from utils.text_extraction import *
 
@@ -73,12 +74,6 @@ def get_current_line(text, pos):
     return text[start:end]
 
 
-def apply_transformation(data, transformation):
-    if isinstance(data, list):
-        return [transformation(text) for text in data]
-    return transformation(data)
-
-
 class DatabaseDocumentLoader():
 
     def __init__(self, connection):
@@ -111,6 +106,44 @@ class DatabaseDocumentLoader():
             documents.append({'id': doc_id, 'contr_id': contr_id, 'url': doc_url, 'text': doc_text, 'vector': doc_vec})
         self._documents = documents
         return self._documents
+
+
+class DatabaseContractsLoader(DatabaseDocumentLoader):
+
+    def __init__(self, connection, doc_pattern=None):
+        super().__init__(connection)
+        self._contracts = None
+        self._doc_pattern = doc_pattern if doc_pattern is not None else \
+            '''\n<FILE id={}>\n{}'''
+
+    def prepare_documents(self, parts=10):
+        contracts = {}
+        total_docs = len(self._raw_data)
+        print("Preparing total " + str(total_docs) + " documents")
+        for i, doc in enumerate(self._raw_data):
+            if i % (int(total_docs / parts)) == 0:
+                print("Progress: {}%".format(numpy.ceil(i * 100 / total_docs)))
+            doc_id = doc[0]
+            contr_id = doc[1]
+            doc_text = doc[8]
+
+            contr_docs = contracts.get(contr_id, {'docs': []})
+            contr_docs['docs'].append({'id': doc_id, 'text': doc_text})
+            contracts[contr_id] = contr_docs
+        self._contracts = contracts
+        return self._contracts
+
+    def prepare_contracts(self, parts=10):
+        total_contrs = len(self._contracts)
+        print("Preparing total " + str(total_contrs) + " contracts")
+        for i, contr_id in enumerate(self._contracts):
+            if i % (int(total_contrs / parts)) == 0:
+                print("Progress: {}%".format(numpy.ceil(i * 100 / total_contrs)))
+            contr_docs = self._contracts[contr_id]['docs']
+            contr_text = ''.join(self._doc_pattern.format(doc['id'], doc['text']) \
+                                 for doc in contr_docs)
+            self._contracts[contr_id]['text'] = contr_text
+        return self._contracts
 
 
 class ReferenceDocumentLoader():
@@ -241,3 +274,125 @@ class DocumentMatcher():
         df_aggregated['diff_ratio'] = df_aggregated['diff'] / df_aggregated['ref_text_len']
         df_contract = df_aggregated[df_aggregated.diff_ratio < filter_ratio]
         return df_contract
+
+
+class StringFinder:
+    _pattern = None
+    _lower = None
+    _show_prec_range = None
+    _show_next_range = None
+
+    def __init__(self, keyword, lower=True, show_range=30):
+        self._pattern = keyword
+        self._lower = lower
+        self._show_prec_range = show_range[0] if isinstance(show_range, tuple) else show_range
+        self._show_next_range = show_range[1] if isinstance(show_range, tuple) else show_range
+
+    def process(self, text):
+        occurrences = find_all_occurrences_in_string(self._pattern, text, self._lower)
+        findings = {}
+        for occ in occurrences:
+            findings[occ] = text[max(0, occ - self._show_prec_range): min(occ + self._show_next_range, len(text))]
+        return findings
+
+
+class SearchEngine:
+    _finders = None
+    _findings = None
+
+    def __init__(self, by_string=None, by_regex=None, by_conllu=None, match='exact', show_range=30):
+        self._finders = []
+        self._findings = {}
+        for keyword in by_string:
+            lower = False
+            if match == 'lower':
+                lower = True
+            self._finders.append(StringFinder(keyword, lower, show_range))
+
+    def preprocess(self, data):
+        data_collection = []
+        if isinstance(data, str):
+            data_collection.append(data)
+        if isinstance(data, list) or \
+                isinstance(data, pandas.core.series.Series):
+            data_collection.extend([str(x) for x in data])
+        return data_collection
+
+    def process(self, data):
+        texts = self.preprocess(data)
+        for i, text in enumerate(texts):
+            findings = {}
+            for finder in self._finders:
+                finding = finder.process(text)
+                if finding:
+                    findings[finder._pattern] = finding
+            if findings:
+                self._findings[i] = findings
+        return self._findings
+
+
+class TimerError(Exception):
+    """A custom exception used to report errors in use of Timer class"""
+
+
+class Timer:
+    timers = dict()
+
+    def __init__(
+            self,
+            name=None,
+            text="{}: Elapsed time: {:0.4f} seconds",
+            logger=print,
+    ):
+        self._start_time = None
+        self.name = name
+        self.text = text
+        self.logger = logger
+
+        # Add new named timers to dictionary of timers
+        if name:
+            self.timers.setdefault(name, 0)
+
+    def start(self):
+        """Start a new timer"""
+
+        if self._start_time is not None:
+            raise TimerError(f"Timer is running. Use .stop() to stop it")
+
+        self._start_time = time.perf_counter()
+
+    def stop(self):
+        """Stop the timer, and report the elapsed time"""
+        if self._start_time is None:
+            raise TimerError(f"Timer is not running. Use .start() to start it")
+
+        elapsed_time = time.perf_counter() - self._start_time
+        self._start_time = None
+
+        if self.logger:
+            self.logger(self.text.format(self.name, elapsed_time))
+        if self.name:
+            self.timers[self.name] += elapsed_time
+
+        return elapsed_time
+
+
+class DataProcessor:
+
+    def __init__(self, timer=None):
+        self._timer = Timer(timer if timer is not None else type(self).__name__)
+
+    def _process_iner(self, data):
+        return data
+
+    def _process_iner_with_time(self, data):
+        self._timer.start()
+        result = self._process_iner(data)
+        self._timer.stop()
+        return result
+
+    def process(self, data, timer=False):
+        process_func = self._process_iner if not timer else self._process_iner_with_time
+        if isinstance(data, list):
+            return [process_func(item) for item in data]
+        return process_func(data)

@@ -2,7 +2,9 @@ import json
 import glob
 
 from .similarity import JaccardSimilarityMachine
+from .subject_context_preprocessing import SubjectContextPreprocessor
 from .subject_extraction import ReferenceSubjectContextExtractor
+from udapi.core.document import Document
 
 
 def save_subjects(df_contracts, column, vzdirs='../../test-data/*/*/*'):
@@ -86,3 +88,23 @@ def validate_subj_contexts_v2(df_contracts, vzdirs):
             df_contracts.valid_rat.loc[row.iloc[0].name] = valid_rat
             df_contracts.ref_context.loc[row.iloc[0].name] = ref_context
     return df_contracts
+
+
+class SubjectSentenceEvaluationMachine:
+    _df_contracts = None
+    _subj_context_preprocessor = None
+
+    def __init__(self, df_contracts, subj_context_preprocessor=SubjectContextPreprocessor()):
+        self._df_contracts = df_contracts
+        self._subj_context_extractor = subj_context_preprocessor
+
+    def preprocess(self):
+        self._df_contracts['filtered_context'] = self._df_contracts['subj_context'].apply( \
+            lambda text: self._subj_context_extractor.process(text))
+
+    def process(self):
+        self._df_contracts = validate_subjects(self._df_contracts, 'filtered_context')
+        return self._df_contracts
+
+    def evaluate(self):
+        return self._df_contracts['valid_score'].mean() * 100

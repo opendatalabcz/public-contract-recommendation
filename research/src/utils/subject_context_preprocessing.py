@@ -2,7 +2,7 @@ import re
 import numpy
 from collections import Counter
 
-from .document_processing import find_all_occurrences_in_string, chars_occurrence_ratio
+from .document_processing import find_all_occurrences_in_string, chars_occurrence_ratio, DataProcessor
 
 
 class TextTransformer:
@@ -334,6 +334,21 @@ class AttributeTagger(AttributeExtractor):
         return [self._complete_attribute_line(line)]
 
 
+class AttributeTagCleaner(LineByLineTransformer):
+
+    def __init__(self, attr_pattern=r'<[A-Z_]+>(.*)<[A-Z_]+/>', keep_attributes=True):
+        super().__init__(keep_attributes)
+        self._attr_pattern = re.compile(attr_pattern)
+
+    def _process(self, lines):
+        cleaned_lines = []
+        for line in lines:
+            match = self._attr_pattern.search(line)
+            if match:
+                cleaned_lines.append(match.group(1))
+        return cleaned_lines
+
+
 class QuotedContractNameExtractor(AttributeExtractor):
 
     def __init__(self, name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
@@ -382,7 +397,7 @@ class StructuredContractNameExtractor(AttributeExtractor):
                 context = line[max(0, start - self._context_range):start]
                 if any(keyword.lower() in context.lower() for keyword in self._positive_keywords):
                     name = line[end:].strip()
-                    if (len(name) < self._min_length) and (len(lines) > i +1):
+                    if (len(name) < self._min_length) and (len(lines) > i + 1):
                         name = lines[i + 1]
                     name = name.strip('. \t')
                     if (len(name) > self._min_length) and \
@@ -408,7 +423,7 @@ class ItemExtractor(AttributeExtractor):
 
 class ItemColonExtractor(ItemExtractor):
 
-    def __init__(self, patterns=[r'zboží:\.'], **kwargs):
+    def __init__(self, patterns=[r'(zboží|položk).{,10}:'], **kwargs):
         super().__init__(**kwargs)
         self._patterns = [re.compile(p) for p in patterns]
 
@@ -428,7 +443,7 @@ class ItemColonExtractor(ItemExtractor):
 
 class ItemEnumerationExtractor(ItemExtractor):
 
-    def __init__(self, enumeration_pattern=r'010(10)*', full_line_length=150, delim=':.', **kwargs):
+    def __init__(self, enumeration_pattern=r'010(10)*', full_line_length=100, delim=':.', **kwargs):
         super().__init__(**kwargs)
         self._enumeration_pattern = enumeration_pattern
         self._full_line_length = full_line_length
@@ -460,7 +475,8 @@ class ItemEnumerationExtractor(ItemExtractor):
                 return selected_lines[::-1]
             if len(line) > self._full_line_length:
                 return []
-            selected_lines.append(line)
+            if len(line) > 5:
+                selected_lines.append(line)
         return []
 
 
@@ -478,17 +494,26 @@ class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
             upper_case_lines.append(rat > 0.95)
         return upper_case_lines
 
+    def _smooth_structure(self, structure):
+        for i, f in enumerate(structure):
+            if f == 2:
+                if sum(structure[max(0,i-5):min(i+5, len(structure))]) < 10:
+                    structure[i] = 1
+        return structure
+
     def _process_internal(self, lines):
         lengths = numpy.array([len(line) for line in lines])
         lines_structure = numpy.zeros(len(lengths), numpy.int32)
         lines_structure[lengths > 5] = 1
         lines_structure[lengths > self._full_line_length] = 2
-        lines_structure[self._upper_case_lines(lines)] = 3
+        lines_structure[lengths > self._full_line_length * 1.5] = 5
+        lines_structure[self._upper_case_lines(lines)] = 5
+        lines_structure = self._smooth_structure(lines_structure)
         lines_structure_pattern = ''.join([str(l) for l in lines_structure])
         longest_selected_part = self._get_longest_matching_part(lines_structure_pattern)
         selected_lines = self._extend_selected_lines(lines, longest_selected_part)
         selected_lines.extend([lines[i] for i in longest_selected_part])
-        if any('\t' in line for line in selected_lines):
+        if any('\t' in line for line in selected_lines):  # filtering by tabular format
             selected_lines = [line for line in selected_lines if '\t' in line]
         selected_lines = [line for line in selected_lines if self._delim not in line]
         if len(selected_lines) > 2:
@@ -533,8 +558,8 @@ class CharItemEnumerationExtractor(ItemEnumerationExtractor):
 
 class CharTupleItemEnumerationExtractor(ItemEnumerationExtractor):
 
-    def __init__(self, enumeration_pattern=r'1+', min_char_occurrences=3,
-                 forbidden_tuples=['Vy', 'Př', 'Za', 'Pr', 'Ob', 'Po'], **kwargs):
+    def __init__(self, enumeration_pattern=r'1+', min_char_occurrences=4,
+                 forbidden_tuples=['Vy', 'Př', 'Za', 'Pr', 'Ob', 'Po', '| '], **kwargs):
         super().__init__(enumeration_pattern=enumeration_pattern, **kwargs)
         self._forbidden_tuples = forbidden_tuples
         self._min_char_occurrences = min_char_occurrences
@@ -542,7 +567,7 @@ class CharTupleItemEnumerationExtractor(ItemEnumerationExtractor):
     def _get_most_frequent_chars(self, chars_frequencies):
         most_frequent_chars = []
         for c in chars_frequencies:
-            if c[0] not in self._forbidden_tuples and c[1] > self._min_char_occurrences:
+            if c[0] not in self._forbidden_tuples and c[1] >= self._min_char_occurrences:
                 most_frequent_chars.append(c[0])
         return most_frequent_chars
 
@@ -625,20 +650,22 @@ class RegexReplaceTransformer:
         return text
 
 
-class SubjectContextPreprocessor:
+class SubjectContextPreprocessor(DataProcessor):
 
     def __init__(self, transformers=None):
+        super().__init__()
         self._transformers = transformers \
             if transformers is not None else \
             [
                 NumeralLinesFilter(too_many_numerals_ratio_threshold=0.5),
                 TooShortLinesFilter(too_short_line_threshold=5),
                 IrrelevantLinesFilter(keywords=['strana', 'stránka', 'e-mail'], max_line_length=75, lower=True),
-                IrrelevantLinesFilter(keywords=['Tel:', 'Fax:', 'IČ:', 'IČO:', 'DIČ:'], max_line_length=75, lower=False),
+                IrrelevantLinesFilter(keywords=['Tel:', 'Fax:', 'IČ:', 'IČO:', 'DIČ:'], max_line_length=75,
+                                      lower=False),
                 IrrelevantLinesRegexFilter(patterns=[r'www', r'[\w\-\.]+\s*@\s*([\w\-]+\.)+[\w\-]{2,4}']),  # email
                 IrrelevantLinesRegexFilter(patterns=[r'(\+\d{2,3}){0,1}(\s{0,1}\d{3}){3}']),  # phone
-                RegexReplaceTransformer(pattern_to_transform=r',([\s]+[A-Z][a-z ])', result_pattern='.\g<1>'),
-                RegexReplaceTransformer(pattern_to_transform=r'\n[ \t]*(.{0,1}[\d]+.{0,1})+[ \t]*',  # paragraph numbers
+                RegexReplaceTransformer(pattern_to_transform=r',([\s]+[A-Z][a-z ])', result_pattern='.\g<1>'),  # . vs , correction
+                RegexReplaceTransformer(pattern_to_transform=r'\n[ \t]*([^\d]{0,1}[\d]{1,2}[^\d])+[ \t]*',  # paragraph numbers
                                         result_pattern='\n'),
                 BlankLinesFilter(replacement='\n', top_n_frequency=200, top_n_var_threshold=5,
                                  full_line_threshold=0.85, min_max_line_length=0),
@@ -646,31 +673,28 @@ class SubjectContextPreprocessor:
                 TooLongLinesTransformer(forbidden_delimiters='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789',
                                         special_delimiters={'-': (r'[\s,\.](-)[\s]+[^(Kč)]', 1)},
                                         too_long_line_treshold=200),
-                RegexReplaceTransformer(pattern_to_transform=r'([^\n])[ ]*\n', result_pattern='\g<1>.\n'),
+                RegexReplaceTransformer(pattern_to_transform=r'([^\n])[ ]*\n', result_pattern='\g<1>.\n'),  # . filling
                 RegexReplaceTransformer(pattern_to_transform=r'(([Nn]ázev|[Pp]opis)[^\n,.:"()]{5,})(\s[A-Z][^\n:]{10})',
-                                        result_pattern='\g<1>:\g<3>'),
+                                        result_pattern='\g<1>:\g<3>'),  # : filling
                 ReplaceMarksTransformer(marks_to_transform=[':'], result_mark=':.'),
                 ReplaceMarksTransformer(marks_to_transform=['..'], result_mark='.'),
-                RegexReplaceTransformer(pattern_to_transform=r'\([^\n()]*\)', result_pattern=''),
+                RegexReplaceTransformer(pattern_to_transform=r'\([^\n()]*\)', result_pattern=''),  # bracket erasing
                 AddLine(line='\n'),
+                StructureItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', enumeration_pattern=r'010(10)*',
+                                                  full_line_length=100, delim=':.'),
+                CharTupleItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>',
+                                                  enumeration_pattern=r'1+', min_char_occurrences=4,
+                                                  forbidden_tuples=['Vy', 'Př', 'Za', 'Pr', 'Ob', 'Po']),
+                ItemColonExtractor(item_tag='<ITEM>;<ITEM/>', patterns=[r'(zboží|položk).{,10}:']),
+                HeaderItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', header_pattern='[Pp]ředmět.{0,20}je.{0,5}$'),
                 QuotedContractNameExtractor(name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                                             false_keywords=['přílo', 'dále', 'jen'],
                                             positive_keywords=['názvem'],
-                                            context_range=30, min_length=25),
+                                            context_range=50, min_length=25),
                 StructuredContractNameExtractor(name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                                                 false_keywords=['přílo', 'dále', 'jen', '"'],
-                                                positive_keywords=['název', 'stavb', 'projekt'], min_length=5,
-                                                delims=[':.']),
-                ItemColonExtractor(item_tag='<ITEM>;<ITEM/>', patterns=[r'(zboží|položk).{,10}:']),
-                StructureItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', enumeration_pattern=r'010(10)*',
-                                                  full_line_length=150, delim=':.'),
-                # CharItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>',
-                #                              enumeration_pattern=r'1+',
-                #                              forbidden_chars='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789'),
-                CharTupleItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>',
-                                                  enumeration_pattern=r'1+', min_char_occurrences=3,
-                                                  forbidden_tuples=['Vy', 'Př', 'Za', 'Pr', 'Ob', 'Po']),
-                HeaderItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', header_pattern='[Pp]ředmět.{0,20}je.{0,5}$'),
+                                                positive_keywords=['název', 'stavb', 'projekt', 'předmět'],
+                                                min_length=25, delims=[':.']),
             ]
 
     def transform_text(self, text):
@@ -678,9 +702,5 @@ class SubjectContextPreprocessor:
             text = transformer.process(text)
         return text
 
-    def process(self, data):
-        if isinstance(data, list):
-            return [self.transform_text(text) for text in data]
-        if isinstance(data, str):
-            return self.transform_text(data)
-        return None
+    def _process_iner(self, text):
+        return self.transform_text(text)

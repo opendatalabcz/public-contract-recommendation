@@ -1,27 +1,64 @@
 import re
+import time
 
+import conllu
+import ufal.udpipe
 from udapi.block.util.filter import Filter
 from udapi.core.document import Document
 
-
-def create_conllu_document(decomposition):
-    doc = Document()
-    doc.from_conllu_string(decomposition)
-    return doc
+from .document_processing import DataProcessor
 
 
-def create_conllu_sentence_list(decomposition):
-    doc = create_conllu_document(decomposition)
-    return [b.trees[0] for b in doc.bundles]
+class TextAnnotator(DataProcessor):
+
+    def __init__(self, pipeline='../model/udpipe/udpipe-ud-2.5-191206/czech-pdt-ud-2.5-191206.udpipe'):
+        super().__init__()
+        if isinstance(pipeline, str):
+            print('Loading UDPipe model from: ' + pipeline)
+            start = time.time()
+            pipeline = ufal.udpipe.Model.load(pipeline)
+            end = time.time()
+            print('Model loaded in: ' + str(end - start) + ' sec')
+        if isinstance(pipeline, ufal.udpipe.Model):
+            pipeline = ufal.udpipe.Pipeline(pipeline, "tokenize", \
+                                            ufal.udpipe.Pipeline.DEFAULT, \
+                                            ufal.udpipe.Pipeline.DEFAULT, "conllu")
+        if not isinstance(pipeline, ufal.udpipe.Pipeline):
+            raise ValueError('pipeline must be ' + ufal.udpipe.Pipeline + ' or a path to the UDPipe model')
+        self._pipeline = pipeline
+
+    def annotate_text(self, text):
+        return self._pipeline.process(text)
+
+    def _process_iner(self, text):
+        return self.annotate_text(text)
 
 
-def conllu_doc_to_str(document):
-    lines = []
-    for bundle in document.bundles:
-        for tree in bundle.trees:
-            lines.append(tree.compute_text())
-    text = '\n'.join(lines)
-    return text
+class UdapiFromConlluTransformer(DataProcessor):
+
+    @staticmethod
+    def from_connlu(conllu):
+        doc = Document()
+        doc.from_conllu_string(conllu)
+        return doc
+
+    def _process_iner(self, conllu):
+        return UdapiFromConlluTransformer.from_connlu(conllu)
+
+
+class UdapiToStrTransformer(DataProcessor):
+
+    @staticmethod
+    def to_string(document):
+        lines = []
+        for bundle in document.bundles:
+            for tree in bundle.trees:
+                lines.append(tree.compute_text())
+        text = '\n'.join(lines)
+        return text
+
+    def _process_iner(self, document):
+        return UdapiToStrTransformer.to_string(document)
 
 
 class UdapiTransformer:
@@ -188,7 +225,7 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
                  banned_node_lemmas=['smlouva', 'předmět', 'uzavření', 'náklad', 'nebezpečí', 'specifikace',
                                      'dodavatel', 'závazek', 'dokumentace', 'rozsah', 'plnění', 'zakázka',
                                      'dohoda', 'poplatek', 'požádání', 'záměr', 'dodatek', 'podmínka', 'standard',
-                                     'norma', 'kvalita', 'prohlášení', 'jiný'],
+                                     'norma', 'kvalita', 'prohlášení', 'jiný', 'osoba'],
                  banned_submitter_lemmas=['objednatel', 'kupující', 'zadavate[lt]', 'projektant'],
                  banned_loctime_lemmas=['místo', 'doba'],
                  previous_banned_lemmas=['zbytný', 'pokud', 'dodatečný', 'dokumentace', 'nutný'],
@@ -363,10 +400,11 @@ class EmptyBundlesFilter:
         return document
 
 
-class ConlluSubjectContextPreprocessor:
+class ConlluSubjectContextPreprocessor(DataProcessor):
     _transformers = None
 
     def __init__(self, transformers=None):
+        super().__init__()
         self._transformers = transformers \
             if transformers is not None else \
             [
@@ -381,7 +419,14 @@ class ConlluSubjectContextPreprocessor:
             conllu_document = transformer.process(conllu_document)
         return conllu_document
 
-    def process(self, data):
-        if isinstance(data, list):
-            return [self.transform_document(doc) for doc in data]
-        return self.transform_document(data)
+    def _process_iner(self, conllu_document):
+        return self.transform_document(conllu_document)
+
+
+def save_connlu_to_file(connlu_data, path='../test-data/conllu_temp.txt'):
+    if isinstance(connlu_data, list):
+        connlu_data = '\n'.join([sentence.serialize() for sentence in connlu_data])
+    if isinstance(connlu_data, conllu.models.TokenList):
+        connlu_data = connlu_data.serialize()
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(connlu_data)

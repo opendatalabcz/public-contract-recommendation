@@ -4,7 +4,7 @@ import pandas
 import numpy
 
 from .document_processing import find_all_occurrences_in_string, get_current_line, flatten_column, \
-    chars_occurrence_ratio
+    chars_occurrence_ratio, DataProcessor
 
 DEF_KEYWORDS = {
     'Předmět smlouvy': 10,
@@ -21,9 +21,11 @@ DEF_KEYWORDS = {
     'Popis': 1
 }
 
-class SubjectContextExtractor:
+
+class SubjectContextExtractor(DataProcessor):
 
     def __init__(self, keywords=DEF_KEYWORDS, subj_range=2040):
+        super().__init__()
         self._keywords = keywords
         self._subj_range = subj_range
 
@@ -62,11 +64,11 @@ class SubjectContextExtractor:
                 # Chars 'I' preceding the pattern (chapter numbering)
                 if text[max(o - 20, 0):o].count('I') > 1:
                     koef += 2
+                # Simple sentences following
+                koef += chars_occurrence_ratio(text[min(o + 50, len(text)): min(o + 100, len(text))])
                 # Nearly noun 'Zbozi' after the pattern ()
                 if 'Zboží' in text[o: min(o + 150, len(text))]:
                     koef *= 0.5
-                # Simple sentences following
-                koef += chars_occurrence_ratio(text[min(o + 50, len(text)): min(o + 100, len(text))])
 
                 rat *= koef
                 occurrences.append({'keyword': matched, 'rat': rat, 'occ': o})
@@ -117,10 +119,7 @@ class SubjectContextExtractor:
         subj_contexts = [text[start:end] for start, end in zip(starts, ends)]
         return subj_contexts
 
-    def process(self, text):
-        return self.get_subject_contexts(text)
-
-    def show_occurrence_distribution(self, text):
+    def show_occurrence_distribution(self, text, figsize=(15, 5)):
         bin_size = int(self._subj_range / 3)
         bins = int(len(text) / bin_size) + 1
         text = text.ljust(bins * bin_size)
@@ -131,15 +130,23 @@ class SubjectContextExtractor:
         hist = numpy.histogram(df['occ'], bins, weights=df['rat'], range=(0, len(text)))
         score = numpy.convolve(hist[0], numpy.array([1, 1, 2, -2, -1, -1]))[2:-3]
 
-        sorted_bins = numpy.argsort(score)[::-1]
-        top_bins = sorted_bins[:min(5, len(sorted_bins))]
-        starts = [subj_bin * bin_size for subj_bin in top_bins]
+        max_score = score.max()
+        threshold = max_score * 2 / 3
+        top_bins = numpy.argwhere(score > threshold).flatten()
 
-        ticks = [str(s) + ' (' + str(b) + ')' for b, s in zip(top_bins, starts)]
-        ax = pandas.DataFrame(hist[0]).plot.bar(figsize=(15, 5), xticks=top_bins)
+        ticks = [str(b) + ' (' + str(s) + ')' for b, s in zip(top_bins, [hist[0][i] for i in top_bins])]
+        ax = pandas.DataFrame(hist[0]).plot.bar(figsize=figsize, xticks=top_bins)
+        ax.set_title('Vážený histogram výskytů klíčových slov')
         ax.set_xticklabels(ticks, rotation=45)
-        ax = pandas.DataFrame(score).plot.bar(figsize=(15, 7), xticks=top_bins)
+        ax.legend(['vážené ohodnocení binů'])
+        ticks = [str(b) + ' (' + str(s) + ')' for b, s in zip(top_bins, [score[i] for i in top_bins])]
+        ax = pandas.DataFrame(score).plot.bar(figsize=(figsize[0], figsize[1] * 1.5), xticks=top_bins)
+        ax.set_title('Skóre výskytů po provedení konvoluce')
         ax.set_xticklabels(ticks, rotation=45)
+        ax.legend(['výsledné skóre binů'])
+
+    def _process_iner(self, text):
+        return self.get_subject_contexts(text)
 
 
 class SubjectContextEndDetector:
@@ -152,6 +159,10 @@ class SubjectContextEndDetector:
 
     def detect(self, start_position, end_position=None):
         self._end_position = min(start_position + self._subj_range * self._multip, len(self._text))
+        endfile_mark = '<FILE'
+        end_occurrences = find_all_occurrences_in_string(endfile_mark, self._text[start_position:end_position])
+        if len(end_occurrences) > 0:
+            self._end_position = start_position + end_occurrences[0]
         return self._end_position
 
 
