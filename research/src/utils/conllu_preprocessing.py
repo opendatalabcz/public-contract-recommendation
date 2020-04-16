@@ -218,14 +218,14 @@ class SubmitterPartSentenceFilter(UdapiTransformer):
 class NonSubjectPartSentenceFilter(UdapiTransformer):
 
     def __init__(self,
-                 target_dep_relations=['nsubj', 'obj', 'obl', 'obl:arg', 'nmod'],
+                 target_dep_relations=['nsubj', 'nsubj:pass', 'obj', 'obl', 'obl:arg', 'nmod'],
                  target_verb_lemmas=['zavazovat', 'doda(t|ný)', 'zajistit', 'prov(edený|ést)',
                                      'zahrnovat', 'spočíva(t|jící)', 'rozumět'],
                  banned_upos_tags=['PUNCT', 'SYM', 'NUM', 'DET'],
                  banned_node_lemmas=['smlouva', 'předmět', 'uzavření', 'náklad', 'nebezpečí', 'specifikace',
                                      'dodavatel', 'závazek', 'dokumentace', 'rozsah', 'plnění', 'zakázka',
                                      'dohoda', 'poplatek', 'požádání', 'záměr', 'dodatek', 'podmínka', 'standard',
-                                     'norma', 'kvalita', 'prohlášení', 'jiný', 'osoba'],
+                                     'norma', 'kvalita', 'prohlášení', 'jiný', 'osoba', 'souhrn'],
                  banned_submitter_lemmas=['objednatel', 'kupující', 'zadavate[lt]', 'projektant'],
                  banned_loctime_lemmas=['místo', 'doba'],
                  previous_banned_lemmas=['zbytný', 'pokud', 'dodatečný', 'dokumentace', 'nutný'],
@@ -250,7 +250,7 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
         self._previous_banned_lemma_finder = PreviousNodeFinder(('lemma', self._previous_banned_lemmas), 5)
         self._preceding_banned_lemma_finder = PrecedingNodeFinder(('lemma', self._preceding_banned_lemmas), 4)
         self._previous_target_verb_finder = PreviousNodeFinder([('lemma', self._target_verb_lemmas),
-                                                                [('lemma', 'být'), ('deprel', ['cop', 'root']),
+                                                                [('lemma', 'být'), ('deprel', ['cop', 'root', 'acl']),
                                                                  ('feats[Polarity]', 'Pos')]], 5)
 
     def _get_candidate_nodes(self, tree):

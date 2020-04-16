@@ -673,12 +673,14 @@ class SubjectContextPreprocessor(DataProcessor):
                 TooLongLinesTransformer(forbidden_delimiters='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789',
                                         special_delimiters={'-': (r'[\s,\.](-)[\s]+[^(Kč)]', 1)},
                                         too_long_line_treshold=200),
-                RegexReplaceTransformer(pattern_to_transform=r'([^\n])[ ]*\n', result_pattern='\g<1>.\n'),  # . filling
+                RegexReplaceTransformer(pattern_to_transform=r'\([^\n()]*\)', result_pattern=''),  # bracket erasing
+                RegexReplaceTransformer(pattern_to_transform=r'([^\n ])[ ]*\n', result_pattern='\g<1>.\n'),  # . filling
                 RegexReplaceTransformer(pattern_to_transform=r'(([Nn]ázev|[Pp]opis)[^\n,.:"()]{5,})(\s[A-Z][^\n:]{10})',
                                         result_pattern='\g<1>:\g<3>'),  # : filling
                 ReplaceMarksTransformer(marks_to_transform=[':'], result_mark=':.'),
+                ReplaceMarksTransformer(marks_to_transform=[';.', ',.'], result_mark='.'),
                 ReplaceMarksTransformer(marks_to_transform=['..'], result_mark='.'),
-                RegexReplaceTransformer(pattern_to_transform=r'\([^\n()]*\)', result_pattern=''),  # bracket erasing
+                RegexReplaceTransformer(pattern_to_transform=r'[ ]*\.', result_pattern='.'),
                 AddLine(line='\n'),
                 StructureItemEnumerationExtractor(item_tag='<ITEM>;<ITEM/>', enumeration_pattern=r'010(10)*',
                                                   full_line_length=100, delim=':.'),
