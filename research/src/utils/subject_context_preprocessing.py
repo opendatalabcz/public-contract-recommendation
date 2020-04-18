@@ -441,6 +441,20 @@ class ItemColonExtractor(ItemExtractor):
         return selected_lines
 
 
+class CPVCodeExtractor(AttributeExtractor):
+
+    def __init__(self, cpv_tag='<CPV>;<CPV/>', pattern=r'(^|[^\d])([\d]{8}-\d)($|[^\d])', **kwargs):
+        super().__init__(cpv_tag, **kwargs)
+        self._pattern = re.compile(pattern)
+
+    def _process_internal(self, line, i, lines):
+        codes = []
+        for match in self._pattern.finditer(line):
+            code = match.group(2)
+            codes.append(code)
+        return codes
+
+
 class ItemEnumerationExtractor(ItemExtractor):
 
     def __init__(self, enumeration_pattern=r'010(10)*', full_line_length=100, delim=':.', **kwargs):
