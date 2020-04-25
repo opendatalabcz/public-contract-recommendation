@@ -1,3 +1,3 @@
-from recommender.component.embedding.embedder import RandomEmbedder, FastTextEmbedder
+from recommender.component.embedding import RandomEmbedder, FastTextEmbedder
 
-print(FastTextEmbedder('C:/x/diplomka/research/model/fasttext/cc.cs.300.bin').embed("ahoj"))
+print(RandomEmbedder(300).embed("ahoj"))

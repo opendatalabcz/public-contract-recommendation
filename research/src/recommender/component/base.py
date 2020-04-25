@@ -1,5 +1,4 @@
 import time
-import logging
 
 
 class TimerError(Exception):
