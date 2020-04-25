@@ -1,6 +1,7 @@
 import pytest
 import os
 import configparser
+import pandas
 
 from recommender.component.embedding.embedder import FastTextEmbedder
 
@@ -24,11 +25,25 @@ class Context:
     def __init__(self):
         self.cfg = create_config('config.cfg')
         self.fasttext_embedder = None
+        self.df_user_profiles = None
+        self.df_contracts = None
 
     def get_fasttext_embedder(self):
         if self.fasttext_embedder is None:
             self.fasttext_embedder = FastTextEmbedder(model=self.cfg['fasttext']['path_to_model'])
         return self.fasttext_embedder
+
+    def get_user_profiles_data(self):
+        if self.df_user_profiles is None:
+            path = os.path.join(self.cfg['data']['path_to_data'], 'df_user_profiles.pickle')
+            self.df_user_profiles = pandas.read_pickle(path)
+        return self.df_user_profiles
+
+    def get_contracts_data(self):
+        if self.df_contracts is None:
+            path = os.path.join(self.cfg['data']['path_to_data'], 'df_contracts.pickle')
+            self.df_contracts = pandas.read_pickle(path)
+        return self.df_contracts
 
 
 @pytest.fixture
