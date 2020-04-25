@@ -1,6 +1,25 @@
 import time
 
 
+class Component:
+
+    def __init__(self, logger=None, timer=None):
+        self.logger = logger
+        self._timer = Timer(name=timer if timer is not None else type(self).__name__,
+                            log=self.logger.debug if self.logger else print)
+
+    def print(self, msg, level='print'):
+        if not self.logger:
+            print(msg)
+        else:
+            if level == 'error':
+                self.logger.error(msg)
+            elif level == 'debug':
+                self.logger.debug(msg)
+            else:
+                self.logger.info(msg)
+
+
 class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
 
@@ -47,23 +66,12 @@ class Timer:
         return elapsed_time
 
 
-class DataProcessor:
+class DataProcessor(Component):
 
-    def __init__(self, logger=None, timer=None):
-        self.logger = logger
+    def __init__(self, timer=None, **kwargs):
+        super().__init__(**kwargs)
         self._timer = Timer(name=timer if timer is not None else type(self).__name__,
                             log=self.logger.debug if self.logger else print)
-
-    def print(self, msg, level='print'):
-        if not self.logger:
-            print(msg)
-        else:
-            if level == 'error':
-                self.logger.error(msg)
-            elif level == 'debug':
-                self.logger.debug(msg)
-            else:
-                self.logger.info(msg)
 
     def _process_inner(self, data):
         return data
