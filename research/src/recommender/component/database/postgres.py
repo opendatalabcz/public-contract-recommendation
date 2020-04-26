@@ -216,6 +216,38 @@ class EntitySubjectManager(DBManager):
                 cursor.close()
 
 
+class ContractEntitySubjectManager(DBManager):
+
+    def __init__(self, connection, **kwargs):
+        super().__init__(connection, **kwargs)
+        self._load_query = """select c.contract_id, es.description, es.embedding
+                              from contract c join
+                                submitter s on c.submitter_id=s.submitter_id join
+                                entity e on s.entity_id=e.entity_id join
+                                entity_subject es on e.entity_id=es.entity_id"""
+
+    def load(self, parts=10):
+        self.print("Running query: " + self._load_query, 'debug')
+        raw_data = self.run_query(self._load_query)
+
+        entity_subjects = {}
+        total_records = len(raw_data)
+        self.print("Loading total " + str(total_records) + " records")
+        for i, item in enumerate(raw_data):
+            if i % (int(total_records / parts) + 1) == 0:
+                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_records)), 'debug')
+            contract_id = item[0]
+            description = item[1]
+            embedding = item[2]
+            subject_items = entity_subjects.get(contract_id,
+                                                {'contract_id': contract_id, 'entity_items': [],
+                                                 'entity_embeddings': []})
+            subject_items['entity_items'].append(description)
+            subject_items['entity_embeddings'].append(embedding)
+            entity_subjects[contract_id] = subject_items
+        return pandas.DataFrame(entity_subjects.values())
+
+
 class EntityManager(DBManager):
 
     def __init__(self, connection, **kwargs):
@@ -286,38 +318,6 @@ class EntityManager(DBManager):
 
                 self._connection.commit()
                 cursor.close()
-
-
-class ContractEntitySubjectManager(DBManager):
-
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        self._load_query = """select c.contract_id, es.description, es.embedding
-                              from contract c join
-                                submitter s on c.submitter_id=s.submitter_id join
-                                entity e on s.entity_id=e.entity_id join
-                                entity_subject es on e.entity_id=es.entity_id"""
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
-        entity_subjects = {}
-        total_records = len(raw_data)
-        self.print("Loading total " + str(total_records) + " records")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_records / parts) + 1) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_records)), 'debug')
-            contract_id = item[0]
-            description = item[1]
-            embedding = item[2]
-            subject_items = entity_subjects.get(contract_id,
-                                                {'contract_id': contract_id, 'entity_items': [],
-                                                 'entity_embeddings': []})
-            subject_items['entity_items'].append(description)
-            subject_items['entity_embeddings'].append(embedding)
-            entity_subjects[contract_id] = subject_items
-        return pandas.DataFrame(entity_subjects.values())
 
 
 class InterestItemManager(DBManager):
