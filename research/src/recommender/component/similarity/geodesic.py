@@ -49,21 +49,21 @@ class LocalityDistanceComputer(Component):
         nvec_to_entity = numpy.array(vec_to_entity, dtype=numpy.float32)
         return nvectors, nvec_to_entity
 
-    def compute_nearest(self, df_user_profile, num_results=1):
-        target_nvectors, nvec_to_user_profile = self._count_mapping(df_user_profile)
+    def compute_nearest(self, df_query_locations, num_results=1):
+        target_nvectors, nvec_to_query_locations = self._count_mapping(df_query_locations)
         most_similar_vecs = self._distance_computer.compute_distances(target_nvectors, self._nvectors, num_results)
 
         results = {}
 
         for index_target_loc, target_loc_row in enumerate(most_similar_vecs):
-            index_df_user_profile = nvec_to_user_profile[index_target_loc]
-            user_id = df_user_profile.loc[index_df_user_profile, 'user_id']
-            user_address = df_user_profile.loc[index_df_user_profile, 'address']
+            index_df_query_locations = nvec_to_query_locations[index_target_loc]
+            query_id = df_query_locations.loc[index_df_query_locations, 'query_id']
+            query_address = df_query_locations.loc[index_df_query_locations, 'address']
 
-            user_results = results.get(user_id, {})
-            results[user_id] = user_results
-            loc_results = user_results.get(user_address, [])
-            user_results[user_address] = loc_results
+            query_results = results.get(query_id, {})
+            results[query_id] = query_results
+            loc_results = query_results.get(query_address, [])
+            query_results[query_address] = loc_results
 
             for index_contr_loc, distance in target_loc_row:
                 index_df_contr = self._nvec_to_contr[index_contr_loc]
@@ -82,10 +82,10 @@ class SimilarLocalityComputer(Component):
         self._distance_computer = distance_domputer if distance_domputer is not None else LocalityDistanceComputer(df_contract_locality)
         self._standardizer = standardizer if standardizer is not None else Log10Standardizer()
 
-    def compute_most_similar(self, df_user_profile, num_results=1):
-        nearest = self._distance_computer.compute_nearest(df_user_profile, num_results)
-        for user in nearest.values():
-            for loc in user.values():
+    def compute_most_similar(self, df_query_locations, num_results=1):
+        nearest = self._distance_computer.compute_nearest(df_query_locations, num_results)
+        for query in nearest.values():
+            for loc in query.values():
                 for contract in loc:
                     contract['similarity'] = self._standardizer.compute(contract['distance'])
         return nearest
@@ -93,18 +93,18 @@ class SimilarLocalityComputer(Component):
 
 class AggregatedLocalSimilarityComputer(SimilarLocalityComputer):
 
-    def compute_most_similar(self, df_user_profile, num_results=1):
-        similar_addresses = super().compute_most_similar(df_user_profile, num_results=numpy.iinfo(numpy.int32).max)
+    def compute_most_similar(self, df_query_locations, num_results=1):
+        similar_addresses = super().compute_most_similar(df_query_locations, num_results=numpy.iinfo(numpy.int32).max)
         similar_addresses_flat = []
-        for uid in similar_addresses:
-            for address in list(similar_addresses[uid].values())[0]:
-                address['user'] = uid
+        for qid in similar_addresses:
+            for address in list(similar_addresses[qid].values())[0]:
+                address['query_id'] = qid
                 similar_addresses_flat.append(address)
 
         df_similar_addresses = pandas.DataFrame(similar_addresses_flat)
-        s_aggregated = df_similar_addresses.set_index(['user', 'contract_id'])['similarity']
-        df_nlargest = s_aggregated.groupby('user').apply(
+        s_aggregated = df_similar_addresses.set_index(['query_id', 'contract_id'])['similarity']
+        df_nlargest = s_aggregated.groupby('query_id').apply(
             lambda x: x.reset_index(drop=True, level=0).nlargest(num_results)).reset_index()
-        result = {user: g[['contract_id', 'similarity']].to_dict('record')
-                  for user, g in df_nlargest.groupby('user')}
+        result = {query: g[['contract_id', 'similarity']].to_dict('record')
+                  for query, g in df_nlargest.groupby('query_id')}
         return result

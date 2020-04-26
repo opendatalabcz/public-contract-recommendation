@@ -50,23 +50,23 @@ class ItemDistanceComputer(Component):
         nvec_to_entity = numpy.array(vec_to_entity)
         return nvectors, nvec_to_entity
 
-    def compute_nearest(self, df_user_profile, num_results=1):
-        target_nvectors, nvec_to_user_profile = self._count_mapping(df_user_profile)
+    def compute_nearest(self, df_query_items, num_results=1):
+        target_nvectors, nvec_to_query = self._count_mapping(df_query_items)
         most_similar_vecs = self._distance_vec_comp.compute_nearest(target_nvectors, self._nvectors, num_results)
 
         results = {}
 
         for index_target_item, target_item_row in enumerate(most_similar_vecs):
-            index_df_user_profile = nvec_to_user_profile[index_target_item][0]
-            user_id = df_user_profile.loc[index_df_user_profile, 'user_id']
-            interest_items = df_user_profile.loc[index_df_user_profile, 'interest_items']
-            index_interest_item = nvec_to_user_profile[index_target_item][1]
-            interest_item = interest_items[index_interest_item]
+            index_df_query = nvec_to_query[index_target_item][0]
+            query_id = df_query_items.loc[index_df_query, 'query_id']
+            query_items = df_query_items.loc[index_df_query, 'items']
+            index_query_item = nvec_to_query[index_target_item][1]
+            query_item = query_items[index_query_item]
 
-            user_results = results.get(user_id, {})
-            results[user_id] = user_results
-            item_results = user_results.get(interest_item, [])
-            user_results[interest_item] = item_results
+            query_results = results.get(query_id, {})
+            results[query_id] = query_results
+            item_results = query_results.get(query_item, [])
+            query_results[query_item] = item_results
 
             for index_contr_item, distance in target_item_row:
                 index_df_contr = self._nvec_to_contr[index_contr_item][0]
@@ -86,11 +86,11 @@ class SimilarItemsComputer(Component):
         self._distance_computer = distance_computer if distance_computer is not None else ItemDistanceComputer(df_contract_items)
         self._standardizer = standardizer if standardizer is not None else Standardizer()
 
-    def compute_most_similar(self, df_user_profile, num_results=1):
-        nearest = self._distance_computer.compute_nearest(df_user_profile, num_results)
-        for user in nearest.values():
-            for loc in user.values():
-                for contract in loc:
+    def compute_most_similar(self, df_query_items, num_results=1):
+        nearest = self._distance_computer.compute_nearest(df_query_items, num_results)
+        for query in nearest.values():
+            for item in query.values():
+                for contract in item:
                     contract['similarity'] = self._standardizer.compute(contract['distance'])
         return nearest
 
@@ -103,20 +103,20 @@ class AggregatedItemSimilarityComputer(SimilarItemsComputer):
         w = group[weight_name]
         return (d * w).sum() / w.sum()
 
-    def compute_most_similar(self, df_user_profile, num_results=1):
-        similar_items = super().compute_most_similar(df_user_profile, num_results=numpy.iinfo(numpy.int32).max)
+    def compute_most_similar(self, df_query_items, num_results=1):
+        similar_items = super().compute_most_similar(df_query_items, num_results=numpy.iinfo(numpy.int32).max)
         similar_items_flat = []
-        for user in similar_items:
-            for iitem in similar_items[user]:
-                for item in similar_items[user][iitem]:
+        for query in similar_items:
+            for iitem in similar_items[query]:
+                for item in similar_items[query][iitem]:
                     item['iitem'] = iitem
-                    item['user'] = user
+                    item['query_id'] = query
                     similar_items_flat.append(item)
         df_similar_items = pandas.DataFrame(similar_items_flat)
-        s_aggregated = df_similar_items.groupby(['user', 'contract_id'])[['similarity']] \
+        s_aggregated = df_similar_items.groupby(['query_id', 'contract_id'])[['similarity']] \
             .apply(self.wavg, "similarity", "similarity")
         s_aggregated = s_aggregated.rename('similarity')
-        df_nlargest = s_aggregated.groupby('user').nlargest(num_results).reset_index(drop=True, level=1).reset_index()
-        result = {user: g[['contract_id', 'similarity']].to_dict('record')
-                  for user, g in df_nlargest.groupby('user')}
+        df_nlargest = s_aggregated.groupby('query_id').nlargest(num_results).reset_index(drop=True, level=1).reset_index()
+        result = {query: g[['contract_id', 'similarity']].to_dict('record')
+                  for query, g in df_nlargest.groupby('query_id')}
         return result

@@ -10,20 +10,21 @@ from recommender.component.similarity.vector_space import ItemDistanceComputer, 
 def test_item_distance_computer(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
 
     idc = ItemDistanceComputer(df_contracts)
-    result = idc.compute_nearest(df_user_profiles)
+    result = idc.compute_nearest(df_query)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 13 in result
 
-    user_result = result[13]
-    assert isinstance(user_result, dict)
-    assert len(user_result) == 1
-    assert 'automobily' in user_result
+    query_result = result[13]
+    assert isinstance(query_result, dict)
+    assert len(query_result) == 1
+    assert 'automobily' in query_result
 
-    items_result = user_result['automobily']
+    items_result = query_result['automobily']
     assert isinstance(items_result, list)
     assert len(items_result) == 1
 
@@ -41,20 +42,21 @@ def test_item_distance_computer(context):
 def test_item_similarity_computer(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
 
     sic = SimilarItemsComputer(df_contracts)
-    result = sic.compute_most_similar(df_user_profiles)
+    result = sic.compute_most_similar(df_query)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 13 in result
 
-    user_result = result[13]
-    assert isinstance(user_result, dict)
-    assert len(user_result) == 1
-    assert 'automobily' in user_result
+    query_result = result[13]
+    assert isinstance(query_result, dict)
+    assert len(query_result) == 1
+    assert 'automobily' in query_result
 
-    items_result = user_result['automobily']
+    items_result = query_result['automobily']
     assert isinstance(items_result, list)
     assert len(items_result) == 1
 
@@ -74,19 +76,20 @@ def test_item_similarity_computer(context):
 def test_aggregated_item_similarity_computer(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
 
     aisc = AggregatedItemSimilarityComputer(df_contracts)
-    result = aisc.compute_most_similar(df_user_profiles, 2)
+    result = aisc.compute_most_similar(df_query, 2)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 13 in result
 
-    user_result = result[13]
-    assert isinstance(user_result, list)
-    assert len(user_result) == 2
+    query_result = result[13]
+    assert isinstance(query_result, list)
+    assert len(query_result) == 2
 
-    item_result = user_result[0]
+    item_result = query_result[0]
     assert isinstance(item_result, dict)
     assert len(item_result) == 2
     assert 'contract_id' in item_result
@@ -98,20 +101,21 @@ def test_aggregated_item_similarity_computer(context):
 def test_aggregated_item_similarity_computer2(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
 
     aisc = AggregatedItemSimilarityComputer(df_contracts, distance_computer=ItemDistanceComputer(df_contracts, cols=(
         'entity_embeddings', 'entity_items')))
-    result = aisc.compute_most_similar(df_user_profiles, 2)
+    result = aisc.compute_most_similar(df_query, 2)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 13 in result
 
-    user_result = result[13]
-    assert isinstance(user_result, list)
-    assert len(user_result) == 2
+    query_result = result[13]
+    assert isinstance(query_result, list)
+    assert len(query_result) == 2
 
-    item_result = user_result[0]
+    item_result = query_result[0]
     assert isinstance(item_result, dict)
     assert len(item_result) == 2
     assert 'contract_id' in item_result
@@ -123,20 +127,21 @@ def test_aggregated_item_similarity_computer2(context):
 def test_locality_distance_computer(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id'})
 
     ldc = LocalityDistanceComputer(df_contracts)
-    result = ldc.compute_nearest(df_user_profiles)
+    result = ldc.compute_nearest(df_query)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 13 in result
 
-    user_result = result[13]
-    assert isinstance(user_result, dict)
-    assert len(user_result) == 1
-    assert 'K Vejrychovsku 1074, Jilemnice' in user_result
+    query_result = result[13]
+    assert isinstance(query_result, dict)
+    assert len(query_result) == 1
+    assert 'K Vejrychovsku 1074, Jilemnice' in query_result
 
-    addresses_result = user_result['K Vejrychovsku 1074, Jilemnice']
+    addresses_result = query_result['K Vejrychovsku 1074, Jilemnice']
     assert isinstance(addresses_result, list)
     assert len(addresses_result) == 1
 
@@ -154,20 +159,21 @@ def test_locality_distance_computer(context):
 def test_locality_similarity_computer(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id'})
 
     slc = SimilarLocalityComputer(df_contracts)
-    result = slc.compute_most_similar(df_user_profiles)
+    result = slc.compute_most_similar(df_query)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 13 in result
 
-    user_result = result[13]
-    assert isinstance(user_result, dict)
-    assert len(user_result) == 1
-    assert 'K Vejrychovsku 1074, Jilemnice' in user_result
+    query_result = result[13]
+    assert isinstance(query_result, dict)
+    assert len(query_result) == 1
+    assert 'K Vejrychovsku 1074, Jilemnice' in query_result
 
-    addresses_result = user_result['K Vejrychovsku 1074, Jilemnice']
+    addresses_result = query_result['K Vejrychovsku 1074, Jilemnice']
     assert isinstance(addresses_result, list)
     assert len(addresses_result) == 1
 
@@ -187,19 +193,20 @@ def test_locality_similarity_computer(context):
 def test_aggregated_locality_similarity_computer(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id'})
 
     alsc = AggregatedLocalSimilarityComputer(df_contracts)
-    result = alsc.compute_most_similar(df_user_profiles, 2)
+    result = alsc.compute_most_similar(df_query, 2)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 16 in result
 
-    user_result = result[16]
-    assert isinstance(user_result, list)
-    assert len(user_result) == 2
+    query_result = result[16]
+    assert isinstance(query_result, list)
+    assert len(query_result) == 2
 
-    address_result = user_result[0]
+    address_result = query_result[0]
     assert isinstance(address_result, dict)
     assert len(address_result) == 2
     assert 'contract_id' in address_result
@@ -211,19 +218,20 @@ def test_aggregated_locality_similarity_computer(context):
 def test_complex_similarity_computer(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
 
     csc = ComplexSimilarityComputer(df_contracts)
-    result = csc.compute_most_similar(df_user_profiles, 2)
+    result = csc.compute_most_similar(df_query, 2)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 16 in result
 
-    user_result = result[16]
-    assert isinstance(user_result, list)
-    assert len(user_result) == 2
+    query_result = result[16]
+    assert isinstance(query_result, list)
+    assert len(query_result) == 2
 
-    contract_result = user_result[0]
+    contract_result = query_result[0]
     assert isinstance(contract_result, dict)
     assert len(contract_result) == 2
     assert 'contract_id' in contract_result
@@ -235,6 +243,7 @@ def test_complex_similarity_computer(context):
 def test_complex_similarity_computer2(context):
     df_contracts = context.get_contracts_data()
     df_user_profiles = context.get_user_profiles_data()
+    df_query = df_user_profiles.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
 
     similarity_computers = [
         AggregatedItemSimilarityComputer(df_contracts),
@@ -244,17 +253,17 @@ def test_complex_similarity_computer2(context):
     ]
 
     csc = ComplexSimilarityComputer(df_contracts, similarity_computers=similarity_computers)
-    result = csc.compute_most_similar(df_user_profiles, 2)
+    result = csc.compute_most_similar(df_query, 2)
 
     assert isinstance(result, dict)
     assert len(result) == 4
     assert 16 in result
 
-    user_result = result[16]
-    assert isinstance(user_result, list)
-    assert len(user_result) == 2
+    query_result = result[16]
+    assert isinstance(query_result, list)
+    assert len(query_result) == 2
 
-    contract_result = user_result[0]
+    contract_result = query_result[0]
     assert isinstance(contract_result, dict)
     assert len(contract_result) == 2
     assert 'contract_id' in contract_result
