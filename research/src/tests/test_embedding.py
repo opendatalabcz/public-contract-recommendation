@@ -28,4 +28,4 @@ def test_fasttext_embedder(context):
     result = embedder.process(token)
     assert isinstance(result, numpy.ndarray)
     assert len(result) == 300
-    assert numpy.isclose(result[0], 0.0012292016)
+    assert numpy.isclose(result[0], 0.042146936)

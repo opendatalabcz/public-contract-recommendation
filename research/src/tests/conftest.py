@@ -46,6 +46,6 @@ class Context:
         return self.df_contracts
 
 
-@pytest.fixture
+@pytest.fixture(scope='session', autouse=True)
 def context():
     return Context()
