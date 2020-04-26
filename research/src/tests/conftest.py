@@ -3,7 +3,7 @@ import os
 import configparser
 import pandas
 
-from recommender.component.embedding.embedder import FastTextEmbedder
+from recommender.component.feature.embedding import FastTextEmbedder
 
 ABS_PATH = os.path.abspath(os.path.dirname(__file__))
 CONFIGS_PATH = ABS_PATH + '/configs'

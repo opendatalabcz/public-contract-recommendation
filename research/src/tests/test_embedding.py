@@ -1,7 +1,7 @@
 import pytest
 import numpy
 
-from recommender.component.embedding.embedder import RandomEmbedder, FastTextEmbedder
+from recommender.component.feature.embedding import RandomEmbedder, FastTextEmbedder
 
 
 def test_random_embedder():

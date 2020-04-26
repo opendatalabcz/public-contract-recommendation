@@ -1,8 +1,9 @@
 import numpy
 
 from recommender.component.similarity.common import ComplexSimilarityComputer
-from recommender.component.similarity.geodesic import LocalityDistanceComputer, SimilarLocalityComputer, \
+from recommender.component.similarity.geospatial import LocalityDistanceComputer, SimilarLocalityComputer, \
     AggregatedLocalSimilarityComputer
+from recommender.component.similarity.standardization import WeightedStandardizer
 from recommender.component.similarity.vector_space import ItemDistanceComputer, SimilarItemsComputer, \
     AggregatedItemSimilarityComputer
 
@@ -235,9 +236,9 @@ def test_complex_similarity_computer(context):
     assert isinstance(contract_result, dict)
     assert len(contract_result) == 2
     assert 'contract_id' in contract_result
-    assert 1 == contract_result['contract_id']
+    assert 5 == contract_result['contract_id']
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.06861591318796488, contract_result['similarity'])
+    assert numpy.isclose(0.12758021808167844, contract_result['similarity'])
 
 
 def test_complex_similarity_computer2(context):
@@ -246,10 +247,10 @@ def test_complex_similarity_computer2(context):
     df_query = df_user_profiles.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
 
     similarity_computers = [
-        AggregatedItemSimilarityComputer(df_contracts),
-        AggregatedItemSimilarityComputer(df_contracts, distance_computer=ItemDistanceComputer(df_contracts, cols=(
-            'entity_embeddings', 'entity_items'))),
-        AggregatedLocalSimilarityComputer(df_contracts),
+        (AggregatedItemSimilarityComputer(df_contracts), WeightedStandardizer(1)),
+        (AggregatedItemSimilarityComputer(df_contracts, distance_computer=ItemDistanceComputer(df_contracts, cols=(
+            'entity_embeddings', 'entity_items'))), WeightedStandardizer(0.2)),
+        (AggregatedLocalSimilarityComputer(df_contracts), WeightedStandardizer(0.2))
     ]
 
     csc = ComplexSimilarityComputer(df_contracts, similarity_computers=similarity_computers)
@@ -267,6 +268,6 @@ def test_complex_similarity_computer2(context):
     assert isinstance(contract_result, dict)
     assert len(contract_result) == 2
     assert 'contract_id' in contract_result
-    assert 1 == contract_result['contract_id']
+    assert 5 == contract_result['contract_id']
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.014519224953165382, contract_result['similarity'])
+    assert numpy.isclose(0.10083095484544853, contract_result['similarity'])

@@ -8,7 +8,7 @@ class Standardizer:
         return 1 - val
 
 
-class Log10Standardizer:
+class Log10Standardizer(Standardizer):
 
     @staticmethod
     def compute(val):
@@ -18,3 +18,14 @@ class Log10Standardizer:
         if res > 1:
             res = 1
         return res
+
+
+class WeightedStandardizer(Standardizer):
+
+    def __init__(self, weight=0.1):
+        self.weight = weight
+
+    def compute(self, val):
+        val *= self.weight
+        val += (1 - self.weight)
+        return val
