@@ -77,9 +77,9 @@ class LocalityDistanceComputer(Component):
 
 class SimilarLocalityComputer(Component):
 
-    def __init__(self, df_contract_locality, distance_domputer=None, standardizer=None, **kwargs):
+    def __init__(self, df_contract_locality, distance_computer=None, standardizer=None, **kwargs):
         super().__init__(**kwargs)
-        self._distance_computer = distance_domputer if distance_domputer is not None else LocalityDistanceComputer(df_contract_locality)
+        self._distance_computer = distance_computer if distance_computer is not None else LocalityDistanceComputer(df_contract_locality)
         self._standardizer = standardizer if standardizer is not None else Log10Standardizer()
 
     def compute_most_similar(self, df_query_locations, num_results=1):

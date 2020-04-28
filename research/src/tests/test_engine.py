@@ -23,7 +23,7 @@ def test_query_by_subject(context):
     assert 'contract_id' in contract_result
     assert contract_result['contract_id'] == 0
     assert 'similarity' in contract_result
-    assert numpy.isclose(contract_result['similarity'], 0.47347007131792146)
+    assert numpy.isclose(contract_result['similarity'], 0.7275054000652961)
 
 
 def test_query_by_address(context):
@@ -72,8 +72,8 @@ def test_query_by_entity_subject(context):
 
 @pytest.mark.parametrize(
     ['address', 'ref_result'],
-    [('Jilemnice', [(0, 0.33192310781406875), (5, 0.30039716583057874)]),
-     ('Vrchlabí', [(5, 0.3377391198454613), (0, 0.29672834012545324)])]
+    [('Jilemnice', [(0, 0.3924711977630223), (5, 0.35100921505320676)]),
+     ('Vrchlabí', [(5, 0.3946426825364163), (0, 0.3508563408743005)])]
 )
 def test_query(context, address, ref_result):
     embedder = context.get_fasttext_embedder()
@@ -122,9 +122,9 @@ def test_query_by_user_profile(context):
     contract_result = query_result[0]
     assert isinstance(contract_result, dict)
     assert 'contract_id' in contract_result
-    assert contract_result['contract_id'] == 2
+    assert contract_result['contract_id'] == 0
     assert 'similarity' in contract_result
-    assert numpy.isclose(contract_result['similarity'], 0.1433232717589146)
+    assert numpy.isclose(contract_result['similarity'], 0.30641769551912074)
 
 
 def test_query_by_user_profile2(context):
@@ -145,6 +145,6 @@ def test_query_by_user_profile2(context):
     contract_result = query_result[0]
     assert isinstance(contract_result, dict)
     assert 'contract_id' in contract_result
-    assert contract_result['contract_id'] == 2
+    assert contract_result['contract_id'] == 0
     assert 'similarity' in contract_result
-    assert numpy.isclose(contract_result['similarity'], 0.1662119375065183)
+    assert numpy.isclose(contract_result['similarity'], 0.32585653662933844)

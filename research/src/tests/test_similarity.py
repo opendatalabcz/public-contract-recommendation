@@ -71,7 +71,7 @@ def test_item_similarity_computer(context):
     assert 'distance' in item_result
     assert numpy.isclose(0.5445505853395554, item_result['distance'])
     assert 'similarity' in item_result
-    assert numpy.isclose(0.45544941466044464, item_result['similarity'])
+    assert numpy.isclose(0.7277247073302223, item_result['similarity'])
 
 
 def test_aggregated_item_similarity_computer(context):
@@ -96,7 +96,7 @@ def test_aggregated_item_similarity_computer(context):
     assert 'contract_id' in item_result
     assert 2 == item_result['contract_id']
     assert 'similarity' in item_result
-    assert numpy.isclose(0.3969723406723996, item_result['similarity'])
+    assert numpy.isclose(0.693600969484643, item_result['similarity'])
 
 
 def test_aggregated_item_similarity_computer2(context):
@@ -122,7 +122,7 @@ def test_aggregated_item_similarity_computer2(context):
     assert 'contract_id' in item_result
     assert 0 == item_result['contract_id']
     assert 'similarity' in item_result
-    assert numpy.isclose(0.4034540073587843, item_result['similarity'])
+    assert numpy.isclose(0.7017270036793921, item_result['similarity'])
 
 
 def test_locality_distance_computer(context):
@@ -238,7 +238,7 @@ def test_complex_similarity_computer(context):
     assert 'contract_id' in contract_result
     assert 5 == contract_result['contract_id']
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.12758021808167844, contract_result['similarity'])
+    assert numpy.isclose(0.29415305631325833, contract_result['similarity'])
 
 
 def test_complex_similarity_computer2(context):
@@ -268,6 +268,6 @@ def test_complex_similarity_computer2(context):
     assert isinstance(contract_result, dict)
     assert len(contract_result) == 2
     assert 'contract_id' in contract_result
-    assert 5 == contract_result['contract_id']
+    assert contract_result['contract_id'] == 1
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.10083095484544853, contract_result['similarity'])
+    assert numpy.isclose(0.2584875263966801, contract_result['similarity'])

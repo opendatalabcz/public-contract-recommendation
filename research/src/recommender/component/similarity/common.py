@@ -1,10 +1,55 @@
+from random import random
+
 import numpy
 import pandas
+import textdistance
 
 from recommender.component.similarity.standardization import WeightedStandardizer
 from recommender.component.similarity.vector_space import AggregatedItemSimilarityComputer
 from recommender.component.similarity.geospatial import AggregatedLocalSimilarityComputer
 from recommender.component.base import Component
+
+
+class SimilarityMachine:
+    _text = None
+    _reference = None
+    _model = None
+
+    def __init__(self, model=None):
+        self._model = model
+
+    def init_case(self, text, reference):
+        self._text = text
+        self._reference = reference
+
+    def preprocess(self):
+        None
+
+    def compute(self, text, reference):
+        self.init_case(text, reference)
+        self.preprocess()
+        return self._inner_compute()
+
+    def _inner_compute(self):
+        return 0.5
+
+
+class RandomSimilarityMachine(SimilarityMachine):
+
+    def _inner_compute(self):
+        return random.random()
+
+
+class JaccardSimilarityMachine(SimilarityMachine):
+
+    def preprocess(self):
+        if isinstance(self._text, str):
+            self._text = self._text.split()
+        if isinstance(self._reference, str):
+            self._reference = self._reference.split()
+
+    def _inner_compute(self):
+        return textdistance.jaccard(self._text, self._reference)
 
 
 class ComplexSimilarityComputer(Component):

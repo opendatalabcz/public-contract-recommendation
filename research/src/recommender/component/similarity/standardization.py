@@ -5,7 +5,14 @@ class Standardizer:
 
     @staticmethod
     def compute(val):
-        return 1 - val
+        return 1-val
+
+
+class CosineStandardizer:
+
+    @staticmethod
+    def compute(val):
+        return (2-val)/2
 
 
 class Log10Standardizer(Standardizer):
