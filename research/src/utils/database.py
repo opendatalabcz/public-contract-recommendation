@@ -43,9 +43,9 @@ class SubjectItemManager(DBManager):
             lembedding = item[3]
             embedding = numpy.array(lembedding)
             contract = contract_items.get(contract_id,
-                                          {'contract_id': contract_id, 'subject_items': [], 'feature': []})
+                                          {'contract_id': contract_id, 'subject_items': [], 'embedding': []})
             contract['subject_items'].append(item_desc)
-            contract['feature'].append(embedding)
+            contract['embedding'].append(embedding)
             contract_items[contract_id] = contract
         return pandas.DataFrame(contract_items.values())
 
@@ -58,7 +58,7 @@ class SubjectItemManager(DBManager):
             contract_id = index
             print(contract_id)
             subject_items = row['subject_items']
-            embeddings = row['feature']
+            embeddings = row['embedding']
 
             for i, item in enumerate(subject_items):
                 print('    ' + item)
@@ -66,7 +66,7 @@ class SubjectItemManager(DBManager):
                 lembedding = embedding.tolist()
                 cursor = self._connection.cursor()
 
-                postgres_insert_query = """INSERT INTO subject_item (contract_id, item_desc, feature)
+                postgres_insert_query = """INSERT INTO subject_item (contract_id, item_desc, embedding)
                                             VALUES (%s,%s,%s)"""
                 record_to_insert = (contract_id, item, lembedding)
                 cursor.execute(postgres_insert_query, record_to_insert)
@@ -121,7 +121,7 @@ class UserProfileManager(DBManager):
                 lembedding = embedding.tolist()
                 cursor = self._connection.cursor()
 
-                postgres_insert_query = """INSERT INTO interest_item (user_id, item_desc, feature)
+                postgres_insert_query = """INSERT INTO interest_item (user_id, item_desc, embedding)
                                             VALUES (%s,%s,%s)"""
                 record_to_insert = (user_id, item, lembedding)
                 cursor.execute(postgres_insert_query, record_to_insert)

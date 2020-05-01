@@ -28,7 +28,7 @@ class SubjectItemManager(DBManager):
 
     def __init__(self, connection, **kwargs):
         super().__init__(connection, **kwargs)
-        self._load_query = 'select contract_id, item_desc, feature from subject_item'
+        self._load_query = 'select contract_id, item_desc, embedding from subject_item'
 
     def load(self, parts=10):
         self.print("Running query: " + self._load_query, 'debug')
@@ -60,7 +60,7 @@ class SubjectItemManager(DBManager):
             contract_id = index
             self.print('Saving contract: {}'.format(contract_id), 'debug')
             subject_items = row['subject_items']
-            embeddings = row['feature']
+            embeddings = row['embedding']
 
             for i, item in enumerate(subject_items):
                 self.print('    ' + item, 'debug')
@@ -68,7 +68,7 @@ class SubjectItemManager(DBManager):
                 lembedding = embedding.tolist()
                 cursor = self._connection.cursor()
 
-                postgres_insert_query = """INSERT INTO subject_item (contract_id, item_desc, feature)
+                postgres_insert_query = """INSERT INTO subject_item (contract_id, item_desc, embedding)
                                            VALUES (%s,%s,%s)"""
                 record_to_insert = (contract_id, item, lembedding)
                 cursor.execute(postgres_insert_query, record_to_insert)
@@ -81,7 +81,7 @@ class CPVItemManager(DBManager):
 
     def __init__(self, connection, **kwargs):
         super().__init__(connection, **kwargs)
-        self._load_query = """select cntr.contract_id, cpv.name, cpv.feature
+        self._load_query = """select cntr.contract_id, cpv.name, cpv.embedding
                                 from contract_cpv cntr join cpv_code cpv on cntr.cpv_id=cpv.id """
 
     def load(self, parts=10):
@@ -169,7 +169,7 @@ class EntitySubjectManager(DBManager):
 
     def __init__(self, connection, **kwargs):
         super().__init__(connection, **kwargs)
-        self._load_query = 'select entity_id, description, feature from entity_subject'
+        self._load_query = 'select entity_id, description, embedding from entity_subject'
 
     def load(self, parts=10):
         self.print("Running query: " + self._load_query, 'debug')
@@ -207,7 +207,7 @@ class EntitySubjectManager(DBManager):
                 lembedding = embedding.tolist()
                 cursor = self._connection.cursor()
 
-                postgres_insert_query = """INSERT INTO entity_subject (entity_id, description, feature)
+                postgres_insert_query = """INSERT INTO entity_subject (entity_id, description, embedding)
                                             VALUES (%s,%s,%s)"""
                 record_to_insert = (entity_id, item, lembedding)
                 cursor.execute(postgres_insert_query, record_to_insert)
@@ -254,7 +254,7 @@ class EntityManager(DBManager):
         super().__init__(connection, **kwargs)
         self._load_query = """
             select e.entity_id, e.dic, e.ico, e.name, e.address, e.latitude, e.longitude,
-                array_agg(es.description) as items, array_agg(es.feature) as embeddings
+                array_agg(es.description) as items, array_agg(es.embedding) as embeddings
             from entity e left join entity_subject es on e.entity_id=es.entity_id
             group by e.entity_id"""
 
@@ -311,7 +311,7 @@ class EntityManager(DBManager):
                 continue
             for i, (item, embedding) in enumerate(zip(items, embeddings)):
                 cursor = self._connection.cursor()
-                postgres_insert_query = """INSERT INTO entity_subject (entity_id, description, feature)
+                postgres_insert_query = """INSERT INTO entity_subject (entity_id, description, embedding)
                                             VALUES (%s,%s,%s)"""
                 record_to_insert = (entity_id, item, embedding)
                 cursor.execute(postgres_insert_query, record_to_insert)
@@ -324,7 +324,7 @@ class InterestItemManager(DBManager):
 
     def __init__(self, connection, **kwargs):
         super().__init__(connection, **kwargs)
-        self._load_query = 'select user_id, item_desc, feature from interest_item'
+        self._load_query = 'select user_id, item_desc, embedding from interest_item'
 
     def load(self, parts=10):
         self.print("Running query: " + self._load_query, 'debug')
@@ -363,7 +363,7 @@ class InterestItemManager(DBManager):
                 lembedding = embedding.tolist()
                 cursor = self._connection.cursor()
 
-                postgres_insert_query = """INSERT INTO interest_item (user_id, item_desc, feature)
+                postgres_insert_query = """INSERT INTO interest_item (user_id, item_desc, embedding)
                                             VALUES (%s,%s,%s)"""
                 record_to_insert = (user_id, item, lembedding)
                 cursor.execute(postgres_insert_query, record_to_insert)
@@ -425,7 +425,7 @@ class UserProfileManager(DBManager):
                 lembedding = embedding.tolist()
                 cursor = self._connection.cursor()
 
-                postgres_insert_query = """INSERT INTO interest_item (user_id, item_desc, feature)
+                postgres_insert_query = """INSERT INTO interest_item (user_id, item_desc, embedding)
                                             VALUES (%s,%s,%s)"""
                 record_to_insert = (user_id, item, lembedding)
                 cursor.execute(postgres_insert_query, record_to_insert)
