@@ -2,7 +2,7 @@ import re
 import numpy
 from collections import Counter
 
-from .document_processing import find_all_occurrences_in_string, chars_occurrence_ratio, DataProcessor
+from recommender.component.feature.document import find_all_occurrences_in_string, chars_occurrence_ratio, DataProcessor
 
 
 class TextTransformer:
@@ -666,8 +666,8 @@ class RegexReplaceTransformer:
 
 class SubjectContextPreprocessor(DataProcessor):
 
-    def __init__(self, transformers=None):
-        super().__init__()
+    def __init__(self, transformers=None, **kwargs):
+        super().__init__(**kwargs)
         self._transformers = transformers \
             if transformers is not None else \
             [

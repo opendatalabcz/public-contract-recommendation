@@ -6,19 +6,19 @@ import ufal.udpipe
 from udapi.block.util.filter import Filter
 from udapi.core.document import Document
 
-from .document_processing import DataProcessor
+from recommender.component.feature.document import DataProcessor
 
 
 class TextAnnotator(DataProcessor):
 
-    def __init__(self, pipeline='../model/udpipe/udpipe-ud-2.5-191206/czech-pdt-ud-2.5-191206.udpipe'):
-        super().__init__()
+    def __init__(self, pipeline='../model/udpipe/udpipe-ud-2.5-191206/czech-pdt-ud-2.5-191206.udpipe', **kwargs):
+        super().__init__(**kwargs)
         if isinstance(pipeline, str):
-            print('Loading UDPipe model from: ' + pipeline)
+            self.print('Loading UDPipe model from: ' + pipeline)
             start = time.time()
             pipeline = ufal.udpipe.Model.load(pipeline)
             end = time.time()
-            print('Model loaded in: ' + str(end - start) + ' sec')
+            self.print('Model loaded in: ' + str(end - start) + ' sec', 'debug')
         if isinstance(pipeline, ufal.udpipe.Model):
             pipeline = ufal.udpipe.Pipeline(pipeline, "tokenize", \
                                             ufal.udpipe.Pipeline.DEFAULT, \

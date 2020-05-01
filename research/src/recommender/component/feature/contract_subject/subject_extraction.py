@@ -1,15 +1,17 @@
-import json
 import random
 import string
-import os
+
 import numpy
 
-from utils.conllu_preprocessing import TextAnnotator, UdapiFromConlluTransformer, ConlluSubjectContextPreprocessor, \
+from recommender.component.base import Component
+from recommender.component.feature.contract_subject.conllu_preprocessing import TextAnnotator, \
+    UdapiFromConlluTransformer, ConlluSubjectContextPreprocessor, \
     UdapiToStrTransformer
-from utils.context_extraction import AdvancedSubjectContextExtractor
-from utils.document_processing import DataProcessor
-from utils.subject_context_preprocessing import SubjectContextPreprocessor, AttributeExtractor, AttributeTagger, \
+from recommender.component.feature.contract_subject.context_extraction import AdvancedSubjectContextExtractor
+from recommender.component.feature.contract_subject.subject_context_preprocessing import SubjectContextPreprocessor, \
+    AttributeExtractor, AttributeTagger, \
     AttributeTagCleaner
+from recommender.component.feature.document import DataProcessor
 
 
 def randomTokens():
@@ -33,18 +35,33 @@ class AttributeMerger(DataProcessor):
         return self.merge_attributes(pair)
 
 
-class AttributeConcatenator:
+class AttributeConcatenator(Component):
 
-    def process(self, attributes):
+    def concatenate(self, attributes):
         if isinstance(attributes, list):
             attributes = '\n'.join(attributes)
         return attributes
 
+    def process(self, data):
+        return self.concatenate(data)
 
-class SubjectExtractor:
+
+class ItemsSplitter(Component):
+
+    def split(self, items):
+        return [item for subitems in items for item in subitems.split('\n') if item]
+
+    def process(self, items):
+        return self.split(items)
+
+
+class SubjectExtractor(DataProcessor):
 
     def extract(self, text=None):
-        return ['ahoj jak se mas']
+        return ['nic']
+
+    def _process_inner(self, data):
+        return self.extract(data)
 
 
 class RandomSubjectExtractor(SubjectExtractor):
@@ -52,52 +69,6 @@ class RandomSubjectExtractor(SubjectExtractor):
     def extract(self, text=None):
         subjects_num = int(numpy.random.exponential()) + 1
         return [randomTokens() for _ in range(subjects_num)]
-
-
-class ReferenceSubjectExtractor(SubjectExtractor):
-    _REF_FILENAME = '_ref.json'
-    _path = None
-    _ref = None
-    _ref_subjects = None
-
-    def __init__(self, path):
-        self._path = path
-
-    def extract(self, text=None):
-        filename = os.path.join(self._path, self._REF_FILENAME)
-        with open(filename, encoding='utf-8') as f:
-            data = f.read()
-            self._ref = json.loads(data)
-            self._ref_subjects = [item['name'] for item in self._ref['subject']['items']]
-        return self._ref_subjects
-
-
-class ReferenceSubject2Extractor(ReferenceSubjectExtractor):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def extract(self, text=None):
-        filename = os.path.join(self._path, self._REF_FILENAME)
-        with open(filename, encoding='utf-8') as f:
-            data = f.read()
-            self._ref = json.loads(data)
-            self._ref_subject = self._ref['subject2'] if 'subject2' in self._ref else None
-        return self._ref_subject
-
-
-class ReferenceSubjectContextExtractor(ReferenceSubjectExtractor):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def extract(self, text=None):
-        filename = os.path.join(self._path, self._REF_FILENAME)
-        with open(filename, encoding='utf-8') as f:
-            data = f.read()
-            self._ref = json.loads(data)
-            self._ref_subject = self._ref['subject_context'] if 'subject_context' in self._ref else None
-        return self._ref_subject
 
 
 class ComplexSubjectExtractor(SubjectExtractor):
@@ -113,7 +84,9 @@ class ComplexSubjectExtractor(SubjectExtractor):
                  items_tagger=None,
                  attribute_merger=None,
                  tag_cleaner=None,
-                 concatenator=None):
+                 concatenator=None,
+                 **kwargs):
+        super().__init__(**kwargs)
         self._subj_context_extractor = subj_context_extractor if subj_context_extractor is not None else \
             AdvancedSubjectContextExtractor()
         self._subj_context_preprocessor = subj_context_preprocessor if subj_context_preprocessor is not None else \

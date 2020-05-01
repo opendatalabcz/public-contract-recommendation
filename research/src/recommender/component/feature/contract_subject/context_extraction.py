@@ -1,10 +1,11 @@
-import glob
 import re
 import pandas
 import numpy
 
-from .document_processing import find_all_occurrences_in_string, get_current_line, flatten_column, \
-    chars_occurrence_ratio, DataProcessor
+from recommender.component.base import DataProcessor
+
+from recommender.component.feature.document import find_all_occurrences_in_string, get_current_line, flatten_column, \
+    chars_occurrence_ratio
 
 DEF_KEYWORDS = {
     'Předmět smlouvy': 10,
@@ -24,8 +25,8 @@ DEF_KEYWORDS = {
 
 class SubjectContextExtractor(DataProcessor):
 
-    def __init__(self, keywords=DEF_KEYWORDS, subj_range=2040):
-        super().__init__()
+    def __init__(self, keywords=DEF_KEYWORDS, subj_range=2040, **kwargs):
+        super().__init__(**kwargs)
         self._keywords = keywords
         self._subj_range = subj_range
 

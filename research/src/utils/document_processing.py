@@ -382,17 +382,17 @@ class DataProcessor:
     def __init__(self, timer=None):
         self._timer = Timer(timer if timer is not None else type(self).__name__)
 
-    def _process_iner(self, data):
+    def _process_inner(self, data):
         return data
 
-    def _process_iner_with_time(self, data):
+    def _process_inner_with_time(self, data):
         self._timer.start()
-        result = self._process_iner(data)
+        result = self._process_inner(data)
         self._timer.stop()
         return result
 
     def process(self, data, timer=False):
-        process_func = self._process_iner if not timer else self._process_iner_with_time
+        process_func = self._process_inner if not timer else self._process_inner_with_time
         if isinstance(data, list):
             return [process_func(item) for item in data]
         return process_func(data)
