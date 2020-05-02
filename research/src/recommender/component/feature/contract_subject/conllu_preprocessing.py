@@ -1,7 +1,6 @@
 import re
 import time
 
-import conllu
 import ufal.udpipe
 from udapi.block.util.filter import Filter
 from udapi.core.document import Document
@@ -127,7 +126,10 @@ class NodeFinder:
 
     def _check_disjunctive_node_attributes(self, node, disjunctions):
         for feat, patterns in disjunctions:
-            attr = node._get_attr(feat)
+            try:
+                attr = node._get_attr(feat)
+            except AttributeError:
+                continue
             if not any(pat.search(attr) for pat in patterns):
                 return False
         return True
@@ -421,12 +423,3 @@ class ConlluSubjectContextPreprocessor(DataProcessor):
 
     def _process_inner(self, conllu_document):
         return self.transform_document(conllu_document)
-
-
-def save_connlu_to_file(connlu_data, path='../test-data/conllu_temp.txt'):
-    if isinstance(connlu_data, list):
-        connlu_data = '\n'.join([sentence.serialize() for sentence in connlu_data])
-    if isinstance(connlu_data, conllu.models.TokenList):
-        connlu_data = connlu_data.serialize()
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(connlu_data)

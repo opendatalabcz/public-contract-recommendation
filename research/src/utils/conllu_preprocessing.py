@@ -127,7 +127,10 @@ class NodeFinder:
 
     def _check_disjunctive_node_attributes(self, node, disjunctions):
         for feat, patterns in disjunctions:
-            attr = node._get_attr(feat)
+            try:
+                attr = node._get_attr(feat)
+            except AttributeError:
+                continue
             if not any(pat.search(attr) for pat in patterns):
                 return False
         return True

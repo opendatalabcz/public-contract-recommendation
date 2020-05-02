@@ -136,7 +136,7 @@ class BlankLinesFilter(TextTransformer):
         lengths = [len(line) for line in lines]
         sorted_lengths = numpy.sort(numpy.array(lengths))[::-1]
         non_empty_lengths = numpy.extract(sorted_lengths > 0, sorted_lengths)
-        max_length = numpy.quantile(non_empty_lengths, q=0.95)
+        max_length = numpy.quantile(non_empty_lengths, q=0.95) if non_empty_lengths else 0
         if max_length >= self._min_max_line_length:
             num_full_length = (sorted_lengths > self._full_line_threshold * max_length).sum()
             num_top_n = max(num_full_length, 2)
