@@ -4,7 +4,7 @@ import sys
 import psycopg2
 import ufal.udpipe
 
-from recommender.component.database.postgres import DocumentManager, SubjectItemManager
+from recommender.component.database.postgres import DocumentDAO, SubjectItemDAO
 from recommender.component.feature.document import DocumentMerger
 from recommender.component.feature.contract_subject import SubjectExtractor
 from recommender.component.feature.contract_subject.conllu_preprocessing import TextAnnotator
@@ -50,8 +50,8 @@ items_spliter = ItemsSplitter()
 extractor = SubjectExtractor(text_annotator=annotator, concatenator=items_spliter, logger=root_logger)
 embedder = FastTextEmbedder(FASTTEXT_PATH, logger=root_logger)
 
-dmngr = DocumentManager(psycopg2_conn, load_query=LOAD_QUERY, logger=root_logger)
-simngr = SubjectItemManager(psycopg2_conn, logger=root_logger)
+dmngr = DocumentDAO(psycopg2_conn, load_query=LOAD_QUERY, logger=root_logger)
+simngr = SubjectItemDAO(psycopg2_conn, logger=root_logger)
 
 logging.info("Starting the process.")
 cond = True

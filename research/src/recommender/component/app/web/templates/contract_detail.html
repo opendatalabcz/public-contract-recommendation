@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="jumbotron" id="landing-info">
+    <h1>{{ contract.name }}</h1>
+    <hr>
+    ID: {{ contract.id }}<br>
+    <p>Položky předmětu</p>
+    <div id="detail">
+        {% for subject_item in contract.subject_items %}
+            {{ subject_item }}<br>
+        {% endfor %}
+    </div>
+    <p>Zadavatel</p>
+    <div id="detail">
+        IČO: {{ contract.submitter.ico }}<br>
+        Adresa: {{ contract.submitter.address }}
+    </div>
+    <p>Odkazy</p>
+    <div id="detail">
+        _: <a href="">_</a>
+    </div>
+</div>
+{% endblock %}

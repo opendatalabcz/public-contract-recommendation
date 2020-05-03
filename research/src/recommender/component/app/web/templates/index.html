@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="jumbotron" id="landing-info">
+    <h1>Vítejte!</h1>
+    <hr>
+
+    {% from "_formhelpers.html" import render_field %}
+    <form method="post">
+        <div class="row">
+            {{ searchform.csrf_token }}
+            {{ searchform.search(id="searchbar", class='col-11 col-s-12', placeholder='hledej') }}
+            <input class="col-1 col-s-12" type="submit" value="Hledat">
+        </div>
+    </form>
+     <div class="row">
+        <div class="col-9 col-s-9">
+            <div>
+                <h2>Zakázky pro Vás</h2>
+                {% include "contract_list.html" %}
+            </div>
+        </div>
+         <div class="col-3 col-s-12">
+             ahoj
+         </div>
+    </div>
+
+</div>
+{% endblock %}

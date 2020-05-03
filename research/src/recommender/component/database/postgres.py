@@ -1,17 +1,37 @@
-import pandas
 import numpy
+import pandas
+import psycopg2
 
 from recommender.component.base import Component
+from recommender.component.database.common import DBManager, ContractDataDAO, ContractItemDAO
 
 
-class DBManager(Component):
+class PostgresManager(DBManager):
+
+    def __init__(self, dbname='postgres', user='postgres', password='admin', host='localhost', port='5432', **kwargs):
+        super().__init__(**kwargs)
+        self._connection = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
+
+
+class PostgresDAO(Component):
+    DEFAULT_QUERY = """select * from table"""
+    DEFALUT_CONDITION = """where column in %s"""
 
     def __init__(self, connection, load_query=None, **kwargs):
         super().__init__(**kwargs)
         self._connection = connection
-        self._load_query = load_query
+        self._load_query = load_query if load_query is not None else self.DEFAULT_QUERY
 
-    def run_query(self, query, values=None):
+    def build_query(self, values=None):
+        query = self._load_query
+        if values is not None:
+            if '%s' not in query:
+                query += ' ' + self.DEFALUT_CONDITION
+        return query
+
+    def run_query(self, values=None):
+        query = self.build_query(values)
+        self.print("Running query: {} with {}".format(query, values), 'debug')
         cursor = self._connection.cursor()
         cursor.execute(query, values)
         if 'select' in query.lower():
@@ -22,28 +42,28 @@ class DBManager(Component):
             data = True
         self._connection.commit()
         cursor.close()
+        self.print("Result: {}".format(data if not isinstance(data, list) else len(data)), 'debug')
         return data
 
+    def _process_result(self, raw_data):
+        return raw_data
 
-class SubjectItemManager(DBManager):
+    def load(self, condition=None):
+        if isinstance(condition, list):
+            condition = tuple([tuple(condition)])
+        raw_data = self.run_query(condition)
+        return self._process_result(raw_data)
 
-    DEFAULT_LOAD_QUERY = 'select contract_id, item_desc, embedding from subject_item'
 
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
+class SubjectItemDAO(PostgresDAO):
+    DEFAULT_QUERY = 'select contract_id, item_desc, embedding from subject_item'
+    DEFALUT_CONDITION = """where contract_id in %s"""
 
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         contract_items = {}
         total_items = len(raw_data)
         self.print("Loading total " + str(total_items) + " items")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_items / parts)) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_items)), 'debug')
+        for item in raw_data:
             contract_id = item[0]
             item_desc = item[1]
             lembedding = item[2]
@@ -53,7 +73,7 @@ class SubjectItemManager(DBManager):
             contract['subject_items'].append(item_desc)
             contract['embeddings'].append(embedding)
             contract_items[contract_id] = contract
-        return pandas.DataFrame(contract_items.values())
+        return pandas.DataFrame(contract_items.values(), columns=['contract_id', 'subject_items', 'embeddings'])
 
     def _truncateDB(self):
         self.run_query('truncate table subject_item')
@@ -81,119 +101,62 @@ class SubjectItemManager(DBManager):
                 cursor.close()
 
 
-class CPVItemManager(DBManager):
+class CPVItemDAO(PostgresDAO):
+    DEFAULT_QUERY = """
+    select cntr.contract_id, cpv.code, cpv.name, cpv.embedding
+    from contract_cpv cntr join cpv_code cpv on cntr.cpv_id=cpv.id """
+    DEFALUT_CONDITION = """where contract_id in %s"""
 
-    DEFAULT_LOAD_QUERY = """select cntr.contract_id, cpv.name, cpv.embedding
-                                from contract_cpv cntr join cpv_code cpv on cntr.cpv_id=cpv.id """
-
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         contract_cpv_items = {}
         total_items = len(raw_data)
         self.print("Loading total " + str(total_items) + " items")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_items / parts)) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_items)), 'debug')
+        for item in raw_data:
             contract_id = item[0]
-            name = item[1]
-            lembedding = item[2]
+            code = item[1]
+            name = item[2]
+            lembedding = item[3]
             embedding = numpy.array(lembedding)
             contract = contract_cpv_items.get(contract_id,
-                                              {'contract_id': contract_id, 'cpv_items': [], 'embeddings': []})
+                                              {'contract_id': contract_id, 'cpv_codes': [], 'cpv_items': [],
+                                               'embeddings': []})
+            contract['cpv_codes'].append(code)
             contract['cpv_items'].append(name)
             contract['embeddings'].append(embedding)
             contract_cpv_items[contract_id] = contract
-        return pandas.DataFrame(contract_cpv_items.values())
+        return pandas.DataFrame(contract_cpv_items.values(), columns=['contract_id', 'cpv_codes', 'cpv_items', 'embeddings'])
 
 
-class ContractItemManager(DBManager):
-
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        self._simngr = SubjectItemManager(connection)
-        self._cpvimngr = CPVItemManager(connection)
-
-    @staticmethod
-    def merge_columns(row):
-        l = row[0]
-        r = row[1]
-        l.extend(r)
-        return l
-
-    def load(self, parts=10):
-        df_contract_items = self._simngr.load(parts)
-        df_contract_cpv_items = self._cpvimngr.load(parts)
-        df_contract_items_merged = pandas.merge(df_contract_items, df_contract_cpv_items, how='outer', on='contract_id')
-        df_contract_items_merged['embeddings_x'] = df_contract_items_merged['embeddings_x'].apply(
-            lambda x: x if isinstance(x, list) else [])
-        df_contract_items_merged['embeddings_y'] = df_contract_items_merged['embeddings_y'].apply(
-            lambda x: x if isinstance(x, list) else [])
-        df_contract_items_merged['subject_items'] = df_contract_items_merged['subject_items'].apply(
-            lambda x: x if isinstance(x, list) else [])
-        df_contract_items_merged['cpv_items'] = df_contract_items_merged['cpv_items'].apply(
-            lambda x: x if isinstance(x, list) else [])
-        df_contract_items_merged['embeddings'] = df_contract_items_merged[['embeddings_x', 'embeddings_y']].apply(
-            self.merge_columns, axis=1)
-        df_contract_items_merged['items'] = df_contract_items_merged[['subject_items', 'cpv_items']].apply(
-            self.merge_columns, axis=1)
-        return df_contract_items_merged.drop(columns=['embeddings_x', 'embeddings_y', 'subject_items', 'cpv_items'])
-
-
-class ContractLocalityManager(DBManager):
-
-    DEFAULT_LOAD_QUERY = """select c.contract_id, e.address, e.latitude, e.longitude
+class ContractSubmitterDAO(PostgresDAO):
+    DEFAULT_QUERY = """select c.contract_id, e.address, e.latitude, e.longitude, e.ico, e.name
                               from contract c join
                                 submitter s on c.submitter_id=s.submitter_id join
                                 entity e on s.entity_id=e.entity_id"""
+    DEFALUT_CONDITION = """where contract_id in %s"""
 
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         locations = []
         total_items = len(raw_data)
         self.print("Loading total " + str(total_items) + " contracts")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_items / parts)) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_items)), 'debug')
+        for item in raw_data:
             contract_id = item[0]
             address = item[1]
             gps_coords = item[2], item[3]
-            locations.append({'contract_id': contract_id, 'address': address, 'gps': gps_coords})
-        return pandas.DataFrame(locations)
+            ico = item[4]
+            name = item[5]
+            locations.append(
+                {'contract_id': contract_id, 'address': address, 'gps': gps_coords, 'ico': ico, 'entity_name': name})
+        return pandas.DataFrame(locations, columns=['contract_id', 'address', 'gps', 'ico', 'entity_name'])
 
 
-class EntitySubjectManager(DBManager):
+class EntitySubjectDAO(PostgresDAO):
+    DEFAULT_QUERY = 'select entity_id, description, embedding from entity_subject'
 
-    DEFAULT_LOAD_QUERY = 'select entity_id, description, embedding from entity_subject'
-
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         entity_subjects = {}
         total_records = len(raw_data)
         self.print("Loading total " + str(total_records) + " records")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_records / parts) + 1) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_records)), 'debug')
+        for item in raw_data:
             entity_id = item[0]
             description = item[1]
             lembedding = item[2]
@@ -229,29 +192,19 @@ class EntitySubjectManager(DBManager):
                 cursor.close()
 
 
-class ContractEntitySubjectManager(DBManager):
-
-    DEFAULT_LOAD_QUERY = """select c.contract_id, es.description, es.feature
+class ContractEntitySubjectDAO(PostgresDAO):
+    DEFAULT_QUERY = """select c.contract_id, es.description, es.embedding
                               from contract c join
                                 submitter s on c.submitter_id=s.submitter_id join
                                 entity e on s.entity_id=e.entity_id join
                                 entity_subject es on e.entity_id=es.entity_id"""
+    DEFALUT_CONDITION = """where contract_id in %s"""
 
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         entity_subjects = {}
         total_records = len(raw_data)
         self.print("Loading total " + str(total_records) + " records")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_records / parts) + 1) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_records)), 'debug')
+        for item in raw_data:
             contract_id = item[0]
             description = item[1]
             embedding = item[2]
@@ -261,32 +214,21 @@ class ContractEntitySubjectManager(DBManager):
             subject_items['entity_items'].append(description)
             subject_items['entity_embeddings'].append(embedding)
             entity_subjects[contract_id] = subject_items
-        return pandas.DataFrame(entity_subjects.values())
+        return pandas.DataFrame(entity_subjects.values(), columns=['contract_id', 'entity_items', 'entity_embeddings'])
 
 
-class EntityManager(DBManager):
-
-    DEFAULT_LOAD_QUERY = """
+class EntityDAO(PostgresDAO):
+    DEFAULT_QUERY = """
             select e.entity_id, e.dic, e.ico, e.name, e.address, e.latitude, e.longitude,
                 array_agg(es.description) as items, array_agg(es.embedding) as embeddings
             from entity e left join entity_subject es on e.entity_id=es.entity_id
             group by e.entity_id"""
 
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         entities = {}
         total_entities = len(raw_data)
         self.print("Loading total " + str(total_entities) + " entities")
-        for i, ent in enumerate(raw_data):
-            if i % (int(total_entities / parts) + 1) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_entities)), 'debug')
+        for ent in raw_data:
             entity_id = ent[0]
             dic = ent[1]
             ico = ent[2]
@@ -339,25 +281,14 @@ class EntityManager(DBManager):
                 cursor.close()
 
 
-class InterestItemManager(DBManager):
+class InterestItemDAO(PostgresDAO):
+    DEFAULT_QUERY = 'select user_id, item_desc, embedding from interest_item'
 
-    DEFAULT_LOAD_QUERY = 'select user_id, item_desc, embedding from interest_item'
-
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         user_profile_items = {}
         total_items = len(raw_data)
         self.print("Loading total " + str(total_items) + " items")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_items / parts) + 1) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_items)), 'debug')
+        for item in raw_data:
             user_id = item[0]
             item_desc = item[1]
             lembedding = item[2]
@@ -394,27 +325,16 @@ class InterestItemManager(DBManager):
                 cursor.close()
 
 
-class UserProfileManager(DBManager):
-
-    DEFAULT_LOAD_QUERY = """select u.user_id, u.address, u.latitude, u.longitude, i.item_desc, i.feature
+class UserProfileDAO(PostgresDAO):
+    DEFAULT_QUERY = """select u.user_id, u.address, u.latitude, u.longitude, i.item_desc, i.feature
                                 from user_profile u join
                                 interest_item i on u.user_id=i.user_id"""
 
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         user_profile_items = {}
         total_items = len(raw_data)
         self.print("Loading total " + str(total_items) + " items")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_items / parts) + 1) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_items)), 'debug')
+        for item in raw_data:
             user_id = item[0]
             address = item[1]
             gps = (item[2], item[3])
@@ -459,31 +379,58 @@ class UserProfileManager(DBManager):
                 cursor.close()
 
 
-class DocumentManager(DBManager):
+class DocumentDAO(PostgresDAO):
+    DEFAULT_QUERY = """select document_id, contract_id, data from document where processed=True"""
+    DEFALUT_CONDITION = """where contract_id in %s"""
 
-    DEFAULT_LOAD_QUERY = """select document_id, contract_id, data from document where processed=True"""
-
-    def __init__(self, connection, **kwargs):
-        super().__init__(connection, **kwargs)
-        if self._load_query is None:
-            self._load_query = self.DEFAULT_LOAD_QUERY
-
-    def load(self, parts=10):
-        self.print("Running query: " + self._load_query, 'debug')
-        raw_data = self.run_query(self._load_query)
-
+    def _process_result(self, raw_data):
         contract_documents = {}
         total_items = len(raw_data)
         self.print("Loading total " + str(total_items) + " documents")
-        for i, item in enumerate(raw_data):
-            if i % (int(total_items / parts)) == 0:
-                self.print("Progress: {}%".format(numpy.ceil(i * 100 / total_items)), 'debug')
+        for item in raw_data:
             doc_id = item[0]
             contract_id = item[1]
             doc_text = item[2]
             contract = contract_documents.get(contract_id,
-                                          {'contract_id': contract_id, 'doc_ids': [], 'doc_texts': []})
+                                              {'contract_id': contract_id, 'doc_ids': [], 'doc_texts': []})
             contract['doc_ids'].append(doc_id)
             contract['doc_texts'].append(doc_text)
             contract_documents[contract_id] = contract
         return pandas.DataFrame(contract_documents.values())
+
+
+class ContractDAO(PostgresDAO):
+    DEFAULT_QUERY = """select contract_id, code1, code2, name from contract"""
+    DEFALUT_CONDITION = """where contract_id in %s"""
+
+    def _process_result(self, raw_data):
+        contracts = []
+        total_items = len(raw_data)
+        self.print("Loading total " + str(total_items) + " contracts")
+        for item in raw_data:
+            contract_id = item[0]
+            code1 = item[1]
+            code2 = item[2]
+            name = item[3]
+            contracts.append({'contract_id': contract_id, 'code1': code1, 'code2': code2, 'name': name})
+        return pandas.DataFrame(contracts, columns=['contract_id', 'code1', 'code2', 'name'])
+
+
+class PostgresContractItemDAO(ContractItemDAO):
+
+    def __init__(self, source, subject_item_dao=None, cpv_item_dao=None, **kwargs):
+        subject_item_dao = subject_item_dao if subject_item_dao is not None else SubjectItemDAO(source, **kwargs)
+        cpv_item_dao = cpv_item_dao if cpv_item_dao is not None else CPVItemDAO(source, **kwargs)
+        super().__init__(subject_item_dao, cpv_item_dao, **kwargs)
+
+
+class PostgresContractDataDAO(ContractDataDAO):
+
+    def __init__(self, source, contact_dao=None, cpv_dao=None, item_dao=None, locality_dao=None,
+                 entity_subject_dao=None, **kwargs):
+        contract_dao = contact_dao if contact_dao is not None else ContractDAO(source, **kwargs)
+        cpv_dao = cpv_dao if cpv_dao is not None else CPVItemDAO(source, **kwargs)
+        item_dao = item_dao if item_dao is not None else SubjectItemDAO(source, **kwargs)
+        locality_dao = locality_dao if locality_dao is not None else ContractSubmitterDAO(source, **kwargs)
+        entity_subject_dao = entity_subject_dao if entity_subject_dao is not None else ContractEntitySubjectDAO(source, **kwargs)
+        super().__init__(contract_dao, cpv_dao, item_dao, locality_dao, entity_subject_dao, **kwargs)

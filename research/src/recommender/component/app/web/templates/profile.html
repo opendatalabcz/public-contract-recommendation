@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="jumbotron" id="landing-info">
+    <h1>Profil</h1>
+    <hr>
+    {% include "flash_message.html" %}
+<!--    {% if saved is sameas true %}-->
+<!--        Změny uloženy-->
+<!--    {% endif %}-->
+
+
+    {% from "_formhelpers.html" import render_field %}
+    <form method="post">
+      <dl>
+        {{ render_field(form.select) }}
+        <p>
+        {{ render_field(form.search) }}
+      </p></dl>
+      <p><input type="submit" value="Uložit">
+    </p></form>
+
+</div>
+{% endblock %}

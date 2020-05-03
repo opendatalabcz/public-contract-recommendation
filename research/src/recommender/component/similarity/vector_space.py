@@ -42,6 +42,8 @@ class ItemDistanceComputer(Component):
         vectors = []
         vec_to_entity = []
         for index, row in df_items.iterrows():
+            if not isinstance(row[embeddings_col], list):
+                continue
             for i, e in enumerate(row[embeddings_col]):
                 vectors.append(e)
                 vec_to_entity.append((index, i))
