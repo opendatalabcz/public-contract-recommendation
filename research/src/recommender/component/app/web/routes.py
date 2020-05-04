@@ -1,6 +1,6 @@
 from flask import session, render_template, request, flash
 
-from recommender.component.app.web.forms import ContractSearchForm, ProfileForm
+from recommender.component.app.web.forms import ContractSearchForm, ProfileForm, BaseSearchForm
 
 
 def init_app(app):
@@ -15,7 +15,7 @@ def init_app(app):
 
     @app.route('/', methods=['GET', 'POST'])
     def index():
-        searchform = ContractSearchForm()
+        searchform = BaseSearchForm()
         if searchform.validate_on_submit():
             data = searchform.search.data
             if not data == '':
@@ -23,9 +23,19 @@ def init_app(app):
         contracts = app.get_contracts(((1,9,10,12, 839, 70, 849, 6),))
         return render_template('index.html', contracts=contracts, searchform=searchform)
 
+    @app.route('/search', methods=['GET', 'POST'])
+    def search():
+        searchform = ContractSearchForm()
+        if searchform.validate_on_submit():
+            data = searchform.subject.data + searchform.address.data + searchform.entity_subject.data
+            if not data == '':
+                return search_results(searchform)
+        contracts = app.get_contracts(((1,9,10,12, 839, 70, 849, 6),))
+        return render_template('search.html', contracts=contracts, searchform=searchform)
+
     @app.route('/contract/<int:contract_id>', methods=['GET'])
     def contract(contract_id):
-        contracts = app.get_contracts(((contract_id,2),))
+        contracts = app.get_contracts([contract_id])
         if len(contracts) == 0:
             flash('Zakázka id {} neexistuje!'.format(contract_id))
         contract = contracts[0]

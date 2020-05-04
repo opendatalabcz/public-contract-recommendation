@@ -5,13 +5,22 @@ class CPVCode:
         self.name = name
 
 
+class Profile:
+
+    def __init__(self, ico, name, url):
+        self.ico = ico
+        self.name = name
+        self.url = url
+
+
 class Submitter:
 
-    def __init__(self, ico, name, address, subject_items):
+    def __init__(self, ico, name, address, subject_items, profiles):
         self.ico = ico
         self.name = name
         self.address = address
         self.subject_items = subject_items if isinstance(subject_items, list) else []
+        self.profiles = profiles
 
 
 class Contract:
@@ -29,8 +38,15 @@ class Contract:
 class ContractFactory:
 
     @staticmethod
-    def create_contracts(df_contracts):
+    def create_contracts(df_contracts, df_profiles=None):
         contracts = []
+
+        profiles = {}
+        for index, row in df_profiles.iterrows():
+            ico = row['ico'].strip()
+            profile = [Profile(ico, name, url) for name, url in zip(row['names'], row['urls'])]
+            profiles[ico] = profile
+
         for index, row in df_contracts.iterrows():
             contract_id = row['contract_id']
             code1 = row['code1']
@@ -40,6 +56,7 @@ class ContractFactory:
             cpvs = []
             if isinstance(row['cpv_codes'], list):
                 cpvs = [CPVCode(cpv_code, cpv_name) for cpv_code, cpv_name in zip(row['cpv_codes'], row['cpv_items'])]
-            submitter = Submitter(row['ico'], row['entity_name'], row['address'], row['subject_items'])
+            ico = row['ico'].strip()
+            submitter = Submitter(ico, row['entity_name'], row['address'], row['subject_items'], profiles.get(ico, []))
             contracts.append(Contract(contract_id, code1, code2, name, subject_items, cpvs, submitter))
         return contracts

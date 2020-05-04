@@ -6,24 +6,27 @@ from recommender.component.base import Component
 from recommender.component.similarity.standardization import CosineStandardizer
 
 
-class DistanceVectorComputer:
+class DistanceVectorComputer(Component):
 
-    @staticmethod
-    def compute_nearest(target, vectors, nresults=1):
+    def _compute_sorted_distances(self, target, vectors):
         similarities = numpy.dot(target, vectors.T)
         sorted_index = numpy.argsort(similarities).T[::-1].T
-        selected_index = sorted_index[:, :nresults]
-        return [[(index, similarities[i, index]) for index in row] for i, row in enumerate(selected_index)]
+        return similarities, sorted_index
 
-
-class CosineDistanceVectorComputer:
-
-    @staticmethod
-    def compute_nearest(target, vectors, nresults=1):
-        distances = spatial_distance.cdist(target, vectors, 'cosine')
-        sorted_index = numpy.argsort(distances)
+    def compute_nearest(self, target, vectors, nresults=1):
+        distances, sorted_index = self._compute_sorted_distances(target, vectors)
+        if sorted_index.size == 0:
+            return []
         selected_index = sorted_index[:, :nresults]
         return [[(index, distances[i, index]) for index in row] for i, row in enumerate(selected_index)]
+
+
+class CosineDistanceVectorComputer(DistanceVectorComputer):
+
+    def _compute_sorted_distances(self, target, vectors):
+        distances = spatial_distance.cdist(target, vectors, 'cosine')
+        sorted_index = numpy.argsort(distances)
+        return distances, sorted_index
 
 
 class ItemDistanceComputer(Component):
@@ -113,6 +116,8 @@ class AggregatedItemSimilarityComputer(SimilarItemsComputer):
                     item['iitem'] = iitem
                     item['query_id'] = query
                     similar_items_flat.append(item)
+        if not similar_items_flat:
+            return {}
         df_similar_items = pandas.DataFrame(similar_items_flat)
         s_aggregated = df_similar_items.groupby(['query_id', 'contract_id'])[['similarity']] \
             .apply(self.wavg, "similarity", "similarity")

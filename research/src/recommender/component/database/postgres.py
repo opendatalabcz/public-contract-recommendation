@@ -124,7 +124,8 @@ class CPVItemDAO(PostgresDAO):
             contract['cpv_items'].append(name)
             contract['embeddings'].append(embedding)
             contract_cpv_items[contract_id] = contract
-        return pandas.DataFrame(contract_cpv_items.values(), columns=['contract_id', 'cpv_codes', 'cpv_items', 'embeddings'])
+        return pandas.DataFrame(contract_cpv_items.values(),
+                                columns=['contract_id', 'cpv_codes', 'cpv_items', 'embeddings'])
 
 
 class ContractSubmitterDAO(PostgresDAO):
@@ -219,66 +220,57 @@ class ContractEntitySubjectDAO(PostgresDAO):
 
 class EntityDAO(PostgresDAO):
     DEFAULT_QUERY = """
-            select e.entity_id, e.dic, e.ico, e.name, e.address, e.latitude, e.longitude,
-                array_agg(es.description) as items, array_agg(es.embedding) as embeddings
-            from entity e left join entity_subject es on e.entity_id=es.entity_id
-            group by e.entity_id"""
+            select e.ico, e.dic, e.name, e.address, e.latitude, e.longitude,
+                array_agg(es.description) as items, array_agg(es.embedding) as embeddings,
+                array_agg(s.name) as names, array_agg(s.url) as urls
+            from entity e
+            left join entity_subject es on e.entity_id=es.entity_id
+            left join source s on e.ico=s.ico
+            group by e.ico"""
 
     def _process_result(self, raw_data):
         entities = {}
         total_entities = len(raw_data)
         self.print("Loading total " + str(total_entities) + " entities")
         for ent in raw_data:
-            entity_id = ent[0]
+            ico = ent[0]
             dic = ent[1]
-            ico = ent[2]
-            name = ent[3]
-            address = ent[4]
-            gps_coords = (ent[5], ent[6])
-            items = ent[7]
-            embeddings = ent[8]
-            entity = entities.get(entity_id,
-                                  {'dic': dic, 'ico': ico, 'name': name, 'address': address, 'gps': gps_coords,
-                                   'entity_items': items, 'entity_embeddings': embeddings})
-            entities[entity_id] = entity
-        return pandas.DataFrame.from_dict(entities, orient='index')
+            name = ent[2]
+            address = ent[3]
+            gps_coords = (ent[4], ent[5])
+            items = ent[6]
+            embeddings = ent[7]
+            names = ent[8]
+            urls = ent[9]
+            entity = entities.get(ico,
+                                  {'ico': ico, 'dic': dic, 'name': name, 'address': address, 'gps': gps_coords,
+                                   'entity_items': items, 'entity_embeddings': embeddings, 'names': names,
+                                   'urls': urls})
+            entities[ico] = entity
+        return pandas.DataFrame(entities.values(),
+                                columns=['ico', 'dic', 'name', 'address', 'gps', 'entity_items', 'entity_embeddings',
+                                         'names', 'urls'])
 
-    def _truncateDB(self):
-        self.run_query('truncate table entity_subject')
 
-    def save(self, df_entities):
-        self._truncateDB()
-        for index, row in df_entities.iterrows():
-            entity_id = index
-            address = row['address']
-            gps_coords = row['gps']
-            latitude, longitude = (gps_coords[0], gps_coords[1]) if gps_coords else (None, None)
-            items = row['entity_items']
-            embeddings = row['entity_embeddings']
-            to_print = [str(x)[:5] if x is not None else '-   ' \
-                        for x in [entity_id, address, latitude, longitude, len(items) if isinstance(items, set) else 0]]
-            self.print("Updating entity {} with address {}, gps:({},{}), #items:{}".format(*to_print))
-            cursor = self._connection.cursor()
-            postgres_update_query = """UPDATE entity
-                                        SET address=%s, latitude=%s, longitude=%s
-                                        WHERE entity_id=%s"""
-            record_to_insert = (address, latitude, longitude, entity_id)
-            cursor.execute(postgres_update_query, record_to_insert)
+class SourceDAO(PostgresDAO):
+    DEFAULT_QUERY = """
+    select ico, array_agg(name) as names, array_agg(url) as urls
+    from source
+    group by ico"""
 
-            self._connection.commit()
-            cursor.close()
-
-            if not items:
-                continue
-            for i, (item, embedding) in enumerate(zip(items, embeddings)):
-                cursor = self._connection.cursor()
-                postgres_insert_query = """INSERT INTO entity_subject (entity_id, description, embedding)
-                                            VALUES (%s,%s,%s)"""
-                record_to_insert = (entity_id, item, embedding)
-                cursor.execute(postgres_insert_query, record_to_insert)
-
-                self._connection.commit()
-                cursor.close()
+    def _process_result(self, raw_data):
+        entities = {}
+        total_entities = len(raw_data)
+        self.print("Loading total " + str(total_entities) + " entities")
+        for ent in raw_data:
+            ico = ent[0]
+            names = ent[1]
+            urls = ent[2]
+            entity = entities.get(ico,
+                                  {'ico': ico, 'names': names, 'urls': urls})
+            entities[ico] = entity
+        return pandas.DataFrame(entities.values(),
+                                columns=['ico', 'names', 'urls'])
 
 
 class InterestItemDAO(PostgresDAO):
@@ -432,5 +424,6 @@ class PostgresContractDataDAO(ContractDataDAO):
         cpv_dao = cpv_dao if cpv_dao is not None else CPVItemDAO(source, **kwargs)
         item_dao = item_dao if item_dao is not None else SubjectItemDAO(source, **kwargs)
         locality_dao = locality_dao if locality_dao is not None else ContractSubmitterDAO(source, **kwargs)
-        entity_subject_dao = entity_subject_dao if entity_subject_dao is not None else ContractEntitySubjectDAO(source, **kwargs)
+        entity_subject_dao = entity_subject_dao if entity_subject_dao is not None else ContractEntitySubjectDAO(source,
+                                                                                                                **kwargs)
         super().__init__(contract_dao, cpv_dao, item_dao, locality_dao, entity_subject_dao, **kwargs)

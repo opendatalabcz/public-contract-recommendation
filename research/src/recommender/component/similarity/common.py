@@ -73,6 +73,8 @@ class ComplexSimilarityComputer(Component):
                     qs = similarities.get(qid, {})
                     qs[cid] = qs.get(cid, 1) * standardizer.compute(contract_res['similarity'])
                     similarities[qid] = qs
+        if not similarities:
+            return {}
         df_similar_contracts = pandas.DataFrame.from_dict(similarities, orient='index')
         s_similar_contracts = df_similar_contracts.stack()
         s_similar_contracts = s_similar_contracts.rename('similarity')

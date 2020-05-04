@@ -1,16 +1,17 @@
 import configparser
-import os
 import logging
+import os
 import sys
 
 import flask
+from flask import flash
 from flask_session import Session
 
 from recommender.component.app.web import routes
 from recommender.component.app.web.model import Contract, ContractFactory, Submitter
-from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO
+from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, EntityDAO, SourceDAO
 from recommender.component.engine.engine import SearchEngine
-from recommender.component.feature import RandomEmbedder, FastTextEmbedder
+from recommender.component.feature import RandomEmbedder
 
 DEFAULT_CONFIG_FILE = 'config.cfg'
 
@@ -25,9 +26,9 @@ class PCRecWeb(flask.Flask):
         self.init_engine()
         self.contracts = {
             1: Contract(1, None, None, 'pěstování plodin', ['jablka', 'hrušky'], None,
-                        Submitter('02589647', None, 'Čtveřín 60 Pěnčín u Liberce', None)),
+                        Submitter('02589647', None, 'Čtveřín 60 Pěnčín u Liberce', None, None)),
             2: Contract(2, None, None, 'obchod s elektronikou', ['výpočetní technika', 'počítače'], None,
-                        Submitter('36548210', None, 'V Jilmu 229 514 01 Jilemnice', None)),
+                        Submitter('36548210', None, 'V Jilmu 229 514 01 Jilemnice', None, None)),
         }
 
     def init_logger(self):
@@ -56,6 +57,13 @@ class PCRecWeb(flask.Flask):
         self.logger.info("Initializing DB connection")
         self.dbmanager = PostgresManager(dbname=dbname, user=user, password=password, host=host, port=port,
                                          logger=self.logger)
+        query = """
+            select ico, array_agg(name) as names, array_agg(url) as urls
+            from source
+            where ico in %s
+            group by ico"""
+        edao = self.dbmanager.create_manager(SourceDAO, load_query=query)
+        self.dbmanager.daos[SourceDAO] = edao
         self.logger.debug("Done")
 
     def init_engine(self):
@@ -64,7 +72,8 @@ class PCRecWeb(flask.Flask):
         df_contracts = cddao.load()
         df_contracts = df_contracts.rename(columns={'subject_items': 'items'})
         path_to_model = self.pcrec_config.get('embedder', 'path')
-        self.engine = SearchEngine(df_contracts, embedder=FastTextEmbedder(path_to_model, logger=self.logger), num_results=10, logger=self.logger)
+        self.engine = SearchEngine(df_contracts, embedder=RandomEmbedder(logger=self.logger), num_results=10,
+                                   logger=self.logger)
         self.logger.debug("Done")
 
     def get_contracts(self, contract_ids):
@@ -73,11 +82,20 @@ class PCRecWeb(flask.Flask):
         sorted_index = dict(zip(contract_ids, range(len(contract_ids))))
         df_contracts['contract_id_rank'] = df_contracts['contract_id'].map(sorted_index)
         df_contracts = df_contracts.sort_values('contract_id_rank')
-        return ContractFactory.create_contracts(df_contracts)
+        df_profiles = self.get_profiles(df_contracts['ico'].tolist())
+        return ContractFactory.create_contracts(df_contracts, df_profiles)
+
+    def get_profiles(self, icos):
+        edao = self.dbmanager.get(SourceDAO)
+        df_entities = edao.load(condition=icos)
+        return df_entities
 
     def search(self, form):
         searchquery = form.get_query()
         result = self.engine.query(searchquery)
+        if not result:
+            flash('Nenalezena žádná položka!')
+            return []
         contract_ids = [res['contract_id'] for res in list(result.values())[0]]
         contracts = self.get_contracts(contract_ids)
         return contracts

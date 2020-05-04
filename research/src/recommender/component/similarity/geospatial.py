@@ -5,12 +5,10 @@ from geopy.distance import distance as geo_distance
 
 from recommender.component.base import Component
 from recommender.component.similarity.standardization import Log10Standardizer
+from recommender.component.similarity.vector_space import DistanceVectorComputer
 
 
-class GeodesicDistanceComputer(Component):
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+class GeodesicDistanceComputer(DistanceVectorComputer):
 
     @staticmethod
     def _compute_matrix(target, vectors):
@@ -21,13 +19,14 @@ class GeodesicDistanceComputer(Component):
                 d = geo_distance(t, v).kilometers
                 res.append(d)
             result.append(res)
+        if not result:
+            return numpy.empty((0, 2), dtype=numpy.float32)
         return numpy.array(result, dtype=numpy.float32)
 
-    def compute_distances(self, target, vectors, num_results=1):
+    def _compute_sorted_distances(self, target, vectors):
         distances = self._compute_matrix(target, vectors)
         sorted_index = numpy.argsort(distances)
-        selected_index = sorted_index[:, :num_results]
-        return [[(index, distances[i, index]) for index in row] for i, row in enumerate(selected_index)]
+        return distances, sorted_index
 
 
 class LocalityDistanceComputer(Component):
@@ -42,6 +41,8 @@ class LocalityDistanceComputer(Component):
         vectors = []
         vec_to_entity = []
         for index, row in df_locations.iterrows():
+            if not isinstance(row['gps'], tuple):
+                continue
             vectors.append(list(row['gps']))
             vec_to_entity.append(index)
 
@@ -51,7 +52,7 @@ class LocalityDistanceComputer(Component):
 
     def compute_nearest(self, df_query_locations, num_results=1):
         target_nvectors, nvec_to_query_locations = self._count_mapping(df_query_locations)
-        most_similar_vecs = self._distance_computer.compute_distances(target_nvectors, self._nvectors, num_results)
+        most_similar_vecs = self._distance_computer.compute_nearest(target_nvectors, self._nvectors, num_results)
 
         results = {}
 
@@ -79,7 +80,8 @@ class SimilarLocalityComputer(Component):
 
     def __init__(self, df_contract_locality, distance_computer=None, standardizer=None, **kwargs):
         super().__init__(**kwargs)
-        self._distance_computer = distance_computer if distance_computer is not None else LocalityDistanceComputer(df_contract_locality)
+        self._distance_computer = distance_computer if distance_computer is not None else LocalityDistanceComputer(
+            df_contract_locality)
         self._standardizer = standardizer if standardizer is not None else Log10Standardizer()
 
     def compute_most_similar(self, df_query_locations, num_results=1):
@@ -100,7 +102,8 @@ class AggregatedLocalSimilarityComputer(SimilarLocalityComputer):
             for address in list(similar_addresses[qid].values())[0]:
                 address['query_id'] = qid
                 similar_addresses_flat.append(address)
-
+        if not similar_addresses_flat:
+            return {}
         df_similar_addresses = pandas.DataFrame(similar_addresses_flat)
         s_aggregated = df_similar_addresses.set_index(['query_id', 'contract_id'])['similarity']
         df_nlargest = s_aggregated.groupby('query_id').apply(

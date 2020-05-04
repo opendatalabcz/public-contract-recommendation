@@ -1,9 +1,18 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="jumbotron" id="landing-info">
-    <h1>{{ contract.name }}</h1>
+    <h1>Detail zakázky</h1>
     <hr>
     ID: {{ contract.id }}<br>
+    ECZ kód: {{ contract.code1 }}<br>
+    Profilový kód: {{ contract.code2 }}
+    <h2>{{ contract.name }}</h2>
+    <p>CPV zařazení</p>
+    <div id="detail">
+        {% for cpv in contract.cpvs %}
+            {{ cpv.code }}: {{ cpv.name }}<br>
+        {% endfor %}
+    </div>
     <p>Položky předmětu</p>
     <div id="detail">
         {% for subject_item in contract.subject_items %}
@@ -13,11 +22,14 @@
     <p>Zadavatel</p>
     <div id="detail">
         IČO: {{ contract.submitter.ico }}<br>
+        IČO: {{ contract.submitter.name }}<br>
         Adresa: {{ contract.submitter.address }}
     </div>
     <p>Odkazy</p>
     <div id="detail">
-        _: <a href="">_</a>
+        {% for profile in contract.submitter.profiles %}
+            {{ profile.name }}: <a href="{{ profile.url }}">{{ profile.url }}</a><br>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

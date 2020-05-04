@@ -13,24 +13,25 @@ class SearchEngine(Component):
 
     def __init__(self, df_contracts, embedder=None, geocoder=None, num_results=1, **kwargs):
         super().__init__(**kwargs)
-        self.embedder = embedder if embedder is not None else RandomEmbedder()
-        self.geocoder = geocoder if geocoder is not None else APIGeocoder()
+        self.embedder = embedder if embedder is not None else RandomEmbedder(logger=self.logger)
+        self.geocoder = geocoder if geocoder is not None else APIGeocoder(logger=self.logger)
         self.num_results = num_results
         self.df_contracts = df_contracts
         self._similarity_computers = {
             'subject': {
-                'sc': AggregatedItemSimilarityComputer(self.df_contracts),
+                'sc': AggregatedItemSimilarityComputer(self.df_contracts, logger=self.logger),
                 'weight': 1,
                 'cols': ('items', 'embeddings')},
             'locality': {
-                'sc': AggregatedLocalSimilarityComputer(self.df_contracts),
+                'sc': AggregatedLocalSimilarityComputer(self.df_contracts, logger=self.logger),
                 'weight': 0.2,
                 'cols': ('address', 'gps')},
             'entity_subject': {
                 'sc': AggregatedItemSimilarityComputer(self.df_contracts,
                                                        distance_computer=ItemDistanceComputer(df_contracts,
                                                                                               cols=('entity_embeddings',
-                                                                                                    'entity_items'))),
+                                                                                                    'entity_items')),
+                                                       logger=self.logger),
                 'weight': 0.2,
                 'cols': ('items', 'embeddings')},
         }
@@ -102,9 +103,9 @@ class SearchEngine(Component):
         return result
 
     def query(self, query_params):
-        similarity_computers = self.prepare_similarity_computers(query_params)
         query = self.merge_queries([self.prepare_query(qt, qs) for qt, qs in query_params.items()])
         df_query = pandas.DataFrame([query])
+        similarity_computers = self.prepare_similarity_computers(query_params)
         complex_similarity_computer = ComplexSimilarityComputer(self.df_contracts,
                                                                 similarity_computers=similarity_computers)
         result = complex_similarity_computer.compute_most_similar(df_query, self.num_results)
