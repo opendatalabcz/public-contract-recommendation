@@ -11,6 +11,9 @@ body{
     border: 1px solid black;
 }
 
+.full_line {
+    width: 100%
+}
 
 .detail {
     background-color: snow;
@@ -24,6 +27,11 @@ body{
 #searchbar {
     font-size: 20px;
 }
+
+#item_enumeration {
+    height: 200px;
+}
+
 
 .main-panel {
 }

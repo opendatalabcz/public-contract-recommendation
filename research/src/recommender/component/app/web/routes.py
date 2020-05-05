@@ -72,10 +72,13 @@ def init_app(app):
     @app.route('/profil', methods=['GET', 'POST'])
     def profil():
         form = ProfileForm(request.form)
+        user_profile = current_user.user_profile
         if request.method == 'POST':
+            app.save_profile(form)
             flash('Změny uloženy!')
-            return render_template('profile.html', form=form)
-        return render_template('profile.html', form=form)
+            return redirect('/profil')
+        form.init_with_profile(user_profile)
+        return render_template('profile.html', form=form, user_profile=user_profile)
 
     @app.route('/test', methods=['GET'])
     def test():

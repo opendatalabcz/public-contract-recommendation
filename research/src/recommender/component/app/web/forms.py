@@ -3,7 +3,6 @@ from wtforms import StringField, TextAreaField
 
 
 class BaseSearchForm(FlaskForm):
-
     search = StringField('')
 
     def get_query(self):
@@ -11,10 +10,9 @@ class BaseSearchForm(FlaskForm):
 
 
 class ContractSearchForm(FlaskForm):
-
-    subject = TextAreaField('Předmět zakázky')
-    address = StringField('Lokalita (adresa zadavatele)')
-    entity_subject = TextAreaField('Předmět podnikání zadavatele')
+    subject = TextAreaField('Předmět zakázky', render_kw={'class': 'full_line', 'id': 'item_enumeration'})
+    address = StringField('Lokalita (adresa zadavatele)', render_kw={'class': 'full_line'})
+    entity_subject = TextAreaField('Předmět podnikání zadavatele', render_kw={'class': 'full_line', 'id': 'item_enumeration'})
 
     def get_query(self):
         query = {}
@@ -28,11 +26,12 @@ class ContractSearchForm(FlaskForm):
 
 
 class ProfileForm(FlaskForm):
-    choices = [('Artist', 'Artist'),
-               ('Album', 'Album'),
-               ('Publisher', 'Publisher')]
-    # select = SelectField('Search for music:', choices=choices)
-    search = StringField('')
+    locality = StringField('Lokalita', render_kw={'class': 'full_line'})
+    interest_items = TextAreaField('Zájmové položky', render_kw={'class': 'full_line', 'id': 'item_enumeration'})
+
+    def init_with_profile(self, user_profile):
+        self.locality.data = user_profile.locality.address
+        self.interest_items.data = '\n'.join([item.description for item in user_profile.interest_items])
 
 
 class LoginForm(FlaskForm):

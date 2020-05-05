@@ -5,12 +5,14 @@ import sys
 
 import flask
 from flask import flash, session
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from flask_session import Session
 
 from recommender.component.app.web import routes
-from recommender.component.app.web.model import Contract, ContractFactory, Submitter, UserProfileFactory, User
-from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO
+from recommender.component.app.web.model import Contract, ContractFactory, Submitter, UserProfileFactory, User, \
+    UserProfile, InterestItem
+from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
+    EntityDAO
 from recommender.component.engine.engine import SearchEngine
 from recommender.component.feature import RandomEmbedder
 
@@ -25,6 +27,7 @@ class PCRecWeb(flask.Flask):
         self.init_logger()
         self.init_db()
         self.init_engine()
+        self.init_users()
 
     def init_logger(self):
         level = self.pcrec_config.get('logger', 'level')
@@ -52,13 +55,23 @@ class PCRecWeb(flask.Flask):
         self.logger.info("Initializing DB connection")
         self.dbmanager = PostgresManager(dbname=dbname, user=user, password=password, host=host, port=port,
                                          logger=self.logger)
-        query = """
+        squery = """
             select ico, array_agg(name) as names, array_agg(url) as urls
             from source
             where ico in %s
             group by ico"""
-        edao = self.dbmanager.create_manager(SourceDAO, load_query=query)
-        self.dbmanager.daos[SourceDAO] = edao
+        sdao = self.dbmanager.create_manager(SourceDAO, load_query=squery)
+        self.dbmanager.daos[SourceDAO] = sdao
+        equery = """
+            select e.ico, e.dic, e.name, e.address, e.latitude, e.longitude,
+                array_agg(es.description) as items, array_agg(es.embedding) as embeddings,
+                null, null
+            from entity e
+            left join entity_subject es on e.entity_id=es.entity_id
+            where e.ico in %s
+            group by e.ico, e.dic, e.name, e.address, e.latitude, e.longitude"""
+        equery = self.dbmanager.create_manager(EntityDAO, load_query=equery)
+        self.dbmanager.daos[EntityDAO] = equery
         self.logger.debug("Done")
 
     def init_engine(self):
@@ -70,6 +83,9 @@ class PCRecWeb(flask.Flask):
         self.engine = SearchEngine(df_contracts, embedder=RandomEmbedder(logger=self.logger), num_results=10,
                                    logger=self.logger)
         self.logger.debug("Done")
+
+    def init_users(self):
+        self.cached_user_profiles = {}
 
     def get_contracts(self, contract_ids):
         cddao = self.dbmanager.get(PostgresContractDataDAO)
@@ -90,21 +106,44 @@ class PCRecWeb(flask.Flask):
         df_user_profiles = updao.load(condition=user_ids)
         return UserProfileFactory.create_profiles(df_user_profiles)
 
+    def init_user_from_ico(self, icos):
+        edao = self.dbmanager.get(EntityDAO)
+        df_entity_profiles = edao.load(condition=icos)
+        df_user_profiles = df_entity_profiles.rename(
+            columns={'ico': 'user_id', 'entity_items': 'interest_items', 'entity_embeddings': 'embeddings'})
+        return UserProfileFactory.create_profiles(df_user_profiles)
+
     def load_user(self, user_id):
-        user_profiles = self.get_user_profiles([user_id])
+        if user_id in self.cached_user_profiles:
+            return User(self.cached_user_profiles[user_id])
+        if isinstance(user_id, str) and len(user_id) == 8:
+            user_profiles = self.init_user_from_ico([user_id])
+        else:
+            user_profiles = self.get_user_profiles([user_id])
         if len(user_profiles) > 0:
             user_profile = user_profiles[0]
+            self.cached_user_profiles[user_id] = user_profile
             return User(user_profile)
         return None
 
     def load_user_from_loginform(self, loginform):
-        if loginform.icologin.data != '':
-            pass
-        elif loginform.idlogin.data != '':
-            user = self.load_user(loginform.idlogin.data)
-            if user:
-                return user
+        login_data = loginform.icologin.data or loginform.idlogin.data
+        user = self.load_user(login_data)
+        if user:
+            return user
         flash('Uživatel neexistuje!')
+
+    def save_profile(self, profile_form):
+        profile = current_user.user_profile
+        address = profile_form.locality.data
+        gps = self.engine.geocoder.gps_for_address(address)
+        if not gps:
+            flash('Adresa nenalezena')
+        items = profile_form.interest_items.data.split('\n')
+        embeddings = self.engine.embedder.process(items)
+        profile.locality.address = address
+        profile.locality.gps = gps
+        profile.interest_items = [InterestItem(item, embedding) for item, embedding in zip(items, embeddings)]
 
     def process_result(self, result):
         if not result:
@@ -152,8 +191,10 @@ class PCRecWeb(flask.Flask):
     def _error_page(error):
         return flask.render_template('error.html', error=error), error.code
 
+
 login_manager = LoginManager()
 app = PCRecWeb.create_app(login_manager)
+
 
 @login_manager.user_loader
 def load_user(user_id):
