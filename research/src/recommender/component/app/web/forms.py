@@ -28,10 +28,12 @@ class ContractSearchForm(FlaskForm):
 class ProfileForm(FlaskForm):
     locality = StringField('Lokalita', render_kw={'class': 'full_line'})
     interest_items = TextAreaField('Zájmové položky', render_kw={'class': 'full_line', 'id': 'item_enumeration'})
+    cached_items = TextAreaField('Kešované položky', render_kw={'class': 'full_line', 'id': 'item_enumeration'})
 
     def init_with_profile(self, user_profile):
         self.locality.data = user_profile.locality.address
         self.interest_items.data = '\n'.join([item.description for item in user_profile.interest_items])
+        self.cached_items.data = '\n'.join([item.description for item in user_profile.cache])
 
 
 class LoginForm(FlaskForm):

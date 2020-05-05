@@ -139,11 +139,20 @@ class PCRecWeb(flask.Flask):
         gps = self.engine.geocoder.gps_for_address(address)
         if not gps:
             flash('Adresa nenalezena')
-        items = profile_form.interest_items.data.split('\n')
-        embeddings = self.engine.embedder.process(items)
         profile.locality.address = address
         profile.locality.gps = gps
+        items = profile_form.interest_items.data.split('\n')
+        embeddings = self.engine.embedder.process(items)
         profile.interest_items = [InterestItem(item, embedding) for item, embedding in zip(items, embeddings)]
+        citems = profile_form.cached_items.data.split('\n')
+        cembeddings = self.engine.embedder.process(items)
+        profile.cache = [InterestItem(item, embedding) for item, embedding in zip(citems, cembeddings)]
+
+    def update_user_profile(self, contract):
+        profile = current_user.user_profile
+        items = contract.subject_items
+        embeddings = contract.embeddings
+        profile.cache += [InterestItem(item, embedding) for item, embedding in zip(items, embeddings)]
 
     def process_result(self, result):
         if not result:

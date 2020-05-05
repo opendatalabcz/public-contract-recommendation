@@ -62,6 +62,7 @@ def init_app(app):
         if len(contracts) == 0:
             flash('Zakázka id {} neexistuje!'.format(contract_id))
         contract = contracts[0]
+        app.update_user_profile(contract)
         return render_template('contract_detail.html', contract=contract)
 
     @app.route('/results')
@@ -79,7 +80,3 @@ def init_app(app):
             return redirect('/profil')
         form.init_with_profile(user_profile)
         return render_template('profile.html', form=form, user_profile=user_profile)
-
-    @app.route('/test', methods=['GET'])
-    def test():
-        return render_template('test.html')

@@ -29,12 +29,13 @@ class Submitter:
 
 class Contract:
 
-    def __init__(self, contract_id, code1, code2, name, subject_items, cpvs, submitter):
+    def __init__(self, contract_id, code1, code2, name, subject_items, embeddings, cpvs, submitter):
         self.id = contract_id
         self.code1 = code1
         self.code2 = code2
         self.name = name
         self.subject_items = subject_items
+        self.embeddings = embeddings
         self.cpvs = cpvs
         self.submitter = submitter
 
@@ -57,12 +58,13 @@ class ContractFactory:
             code2 = row['code2']
             name = row['name']
             subject_items = row['subject_items'] if isinstance(row['subject_items'], list) else []
+            embeddings = row['embeddings'] if isinstance(row['embeddings'], list) else []
             cpvs = []
             if isinstance(row['cpv_codes'], list):
                 cpvs = [CPVCode(cpv_code, cpv_name) for cpv_code, cpv_name in zip(row['cpv_codes'], row['cpv_items'])]
             ico = row['ico'].strip()
             submitter = Submitter(ico, row['entity_name'], row['address'], row['subject_items'], profiles.get(ico, []))
-            contracts.append(Contract(contract_id, code1, code2, name, subject_items, cpvs, submitter))
+            contracts.append(Contract(contract_id, code1, code2, name, subject_items, embeddings, cpvs, submitter))
         return contracts
 
 
@@ -87,10 +89,12 @@ class UserProfile:
         self.locality = locality
         self.interest_items = interest_items
 
+        self.cache = []
+
     def to_pandas(self):
         updict = [{'user_id': self.id, 'address': self.locality.address, 'gps': self.locality.gps,
-                  'interest_items': [item.description for item in self.interest_items],
-                  'embeddings': [item.embedding for item in self.interest_items]}]
+                  'interest_items': [item.description for item in self.interest_items+self.cache],
+                  'embeddings': [item.embedding for item in self.interest_items+self.cache]}]
         return pandas.DataFrame(updict)
 
 
