@@ -40,8 +40,11 @@ def init_app(app):
             user_profile = current_user.user_profile
             contracts = app.recommend(user_profile)
             locality_contracts = app.recommend(user_profile, {'locality'}, 3)
+            subject_contracts = app.recommend(user_profile, {'subject'}, 3)
+            entity_subject_contracts = app.recommend(user_profile, {'entity_subject'}, 3)
             return render_template('index.html', contracts=contracts, searchform=searchform, user_profile=user_profile,
-                                   locality_contracts=locality_contracts)
+                                   locality_contracts=locality_contracts, subject_contracts=subject_contracts,
+                                   entity_subject_contracts=entity_subject_contracts)
         else:
             contracts = app.get_contracts(((1, 9, 10, 12, 839, 70, 849, 6),))
             return render_template('index.html', contracts=contracts, searchform=searchform)
@@ -62,7 +65,8 @@ def init_app(app):
         if len(contracts) == 0:
             flash('Zakázka id {} neexistuje!'.format(contract_id))
         contract = contracts[0]
-        app.update_user_profile(contract)
+        if current_user.is_authenticated:
+            app.update_user_profile(contract)
         return render_template('contract_detail.html', contract=contract)
 
     @app.route('/results')

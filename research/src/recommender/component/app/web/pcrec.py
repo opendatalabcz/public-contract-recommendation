@@ -14,7 +14,7 @@ from recommender.component.app.web.model import Contract, ContractFactory, Submi
 from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
     EntityDAO
 from recommender.component.engine.engine import SearchEngine
-from recommender.component.feature import RandomEmbedder
+from recommender.component.feature import RandomEmbedder, FastTextEmbedder
 
 DEFAULT_CONFIG_FILE = 'config.cfg'
 
@@ -80,7 +80,7 @@ class PCRecWeb(flask.Flask):
         df_contracts = cddao.load()
         df_contracts = df_contracts.rename(columns={'subject_items': 'items'})
         path_to_model = self.pcrec_config.get('embedder', 'path')
-        self.engine = SearchEngine(df_contracts, embedder=RandomEmbedder(logger=self.logger), num_results=10,
+        self.engine = SearchEngine(df_contracts, embedder=FastTextEmbedder(path_to_model, logger=self.logger), num_results=10,
                                    logger=self.logger)
         self.logger.debug("Done")
 

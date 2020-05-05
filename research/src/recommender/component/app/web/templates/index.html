@@ -24,12 +24,20 @@
              {% set panel_class = 'secondary-panel' %}
              {% if locality_contracts is defined %}
              <div>
-                 <h3>Zakázky blízko Vás</h3>
+                 <h3>Blízké zakázky</h3>
                  {{ render_contracts(locality_contracts, panel_class) }}
-<!--                                      {% for contract in locality_contracts %}-->
-<!--                        {% include "contract_item.html" %}-->
-<!--                    {% endfor %}-->
-
+             </div>
+             {% endif %}
+             {% if subject_contracts is defined %}
+             <div>
+                 <h3>Zakázky se zajímavým předmětem</h3>
+                 {{ render_contracts(subject_contracts, panel_class) }}
+             </div>
+             {% endif %}
+             {% if entity_subject_contracts is defined %}
+             <div>
+                 <h3>Zákázky podobných zadavatelů</h3>
+                 {{ render_contracts(entity_subject_contracts, panel_class) }}
              </div>
              {% endif %}
          </div>
