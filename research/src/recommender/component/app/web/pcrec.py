@@ -4,12 +4,13 @@ import os
 import sys
 
 import flask
-from flask import flash
+from flask import flash, session
+from flask_login import LoginManager
 from flask_session import Session
 
 from recommender.component.app.web import routes
-from recommender.component.app.web.model import Contract, ContractFactory, Submitter
-from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, EntityDAO, SourceDAO
+from recommender.component.app.web.model import Contract, ContractFactory, Submitter, UserProfileFactory, User
+from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO
 from recommender.component.engine.engine import SearchEngine
 from recommender.component.feature import RandomEmbedder
 
@@ -24,12 +25,6 @@ class PCRecWeb(flask.Flask):
         self.init_logger()
         self.init_db()
         self.init_engine()
-        self.contracts = {
-            1: Contract(1, None, None, 'pěstování plodin', ['jablka', 'hrušky'], None,
-                        Submitter('02589647', None, 'Čtveřín 60 Pěnčín u Liberce', None, None)),
-            2: Contract(2, None, None, 'obchod s elektronikou', ['výpočetní technika', 'počítače'], None,
-                        Submitter('36548210', None, 'V Jilmu 229 514 01 Jilemnice', None, None)),
-        }
 
     def init_logger(self):
         level = self.pcrec_config.get('logger', 'level')
@@ -90,9 +85,28 @@ class PCRecWeb(flask.Flask):
         df_entities = edao.load(condition=icos)
         return df_entities
 
-    def search(self, form):
-        searchquery = form.get_query()
-        result = self.engine.query(searchquery)
+    def get_user_profiles(self, user_ids):
+        updao = self.dbmanager.get(UserProfileDAO)
+        df_user_profiles = updao.load(condition=user_ids)
+        return UserProfileFactory.create_profiles(df_user_profiles)
+
+    def load_user(self, user_id):
+        user_profiles = self.get_user_profiles([user_id])
+        if len(user_profiles) > 0:
+            user_profile = user_profiles[0]
+            return User(user_profile)
+        return None
+
+    def load_user_from_loginform(self, loginform):
+        if loginform.icologin.data != '':
+            pass
+        elif loginform.idlogin.data != '':
+            user = self.load_user(loginform.idlogin.data)
+            if user:
+                return user
+        flash('Uživatel neexistuje!')
+
+    def process_result(self, result):
         if not result:
             flash('Nenalezena žádná položka!')
             return []
@@ -100,8 +114,18 @@ class PCRecWeb(flask.Flask):
         contracts = self.get_contracts(contract_ids)
         return contracts
 
+    def search(self, form):
+        searchquery = form.get_query()
+        result = self.engine.query(searchquery)
+        return self.process_result(result)
+
+    def recommend(self, user_profile, query_params=None, nitems=10):
+        df_user_profile = user_profile.to_pandas()
+        result = self.engine.query_by_user_profile(df_user_profile, query_params)
+        return self.process_result(result)[:nitems]
+
     @staticmethod
-    def create_app():
+    def create_app(login_manager):
         cfg = PCRecWeb.create_config()
         app = PCRecWeb(cfg, import_name=__name__)
         # Check Configuration section for more details
@@ -110,6 +134,7 @@ class PCRecWeb(flask.Flask):
         sess = Session()
         sess.init_app(app)
         routes.init_app(app)
+        login_manager.init_app(app)
         return app
 
     @staticmethod
@@ -127,5 +152,9 @@ class PCRecWeb(flask.Flask):
     def _error_page(error):
         return flask.render_template('error.html', error=error), error.code
 
+login_manager = LoginManager()
+app = PCRecWeb.create_app(login_manager)
 
-app = PCRecWeb.create_app()
+@login_manager.user_loader
+def load_user(user_id):
+    return app.load_user(user_id)

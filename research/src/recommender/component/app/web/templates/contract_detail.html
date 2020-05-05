@@ -8,25 +8,25 @@
     Profilový kód: {{ contract.code2 }}
     <h2>{{ contract.name }}</h2>
     <p>CPV zařazení</p>
-    <div id="detail">
+    <div class="detail">
         {% for cpv in contract.cpvs %}
             {{ cpv.code }}: {{ cpv.name }}<br>
         {% endfor %}
     </div>
     <p>Položky předmětu</p>
-    <div id="detail">
+    <div class="detail">
         {% for subject_item in contract.subject_items %}
             {{ subject_item }}<br>
         {% endfor %}
     </div>
     <p>Zadavatel</p>
-    <div id="detail">
+    <div class="detail">
         IČO: {{ contract.submitter.ico }}<br>
         IČO: {{ contract.submitter.name }}<br>
         Adresa: {{ contract.submitter.address }}
     </div>
     <p>Odkazy</p>
-    <div id="detail">
+    <div class="detail">
         {% for profile in contract.submitter.profiles %}
             {{ profile.name }}: <a href="{{ profile.url }}">{{ profile.url }}</a><br>
         {% endfor %}

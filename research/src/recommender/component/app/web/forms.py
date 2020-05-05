@@ -33,3 +33,8 @@ class ProfileForm(FlaskForm):
                ('Publisher', 'Publisher')]
     # select = SelectField('Search for music:', choices=choices)
     search = StringField('')
+
+
+class LoginForm(FlaskForm):
+    icologin = StringField('Podle IČO')
+    idlogin = StringField('Podle ID')

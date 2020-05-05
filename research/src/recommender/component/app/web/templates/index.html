@@ -4,7 +4,7 @@
     <h1>Vítejte!</h1>
     <hr>
 
-    {% from "_formhelpers.html" import render_field %}
+    {% from "_helpers.html" import render_field, render_contracts %}
     <form method="post">
         <div class="row">
             {{ searchform.csrf_token }}
@@ -13,14 +13,25 @@
         </div>
     </form>
      <div class="row">
-        <div class="col-9 col-s-9">
+        <div class="col-9 col-s-9 main-panel">
+            {% set panel_class = 'main-panel' %}
             <div>
                 <h2>Zakázky pro Vás</h2>
-                {% include "contract_list.html" %}
+                {{ render_contracts(contracts, panel_class) }}
             </div>
         </div>
-         <div class="col-3 col-s-12">
-             ahoj
+         <div class="col-3 col-s-12 secondary-panel">
+             {% set panel_class = 'secondary-panel' %}
+             {% if locality_contracts is defined %}
+             <div>
+                 <h3>Zakázky blízko Vás</h3>
+                 {{ render_contracts(locality_contracts, panel_class) }}
+<!--                                      {% for contract in locality_contracts %}-->
+<!--                        {% include "contract_item.html" %}-->
+<!--                    {% endfor %}-->
+
+             </div>
+             {% endif %}
          </div>
     </div>
 

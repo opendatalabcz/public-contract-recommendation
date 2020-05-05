@@ -1,3 +1,7 @@
+import pandas
+from flask_login import UserMixin
+
+
 class CPVCode:
 
     def __init__(self, code, name):
@@ -60,3 +64,54 @@ class ContractFactory:
             submitter = Submitter(ico, row['entity_name'], row['address'], row['subject_items'], profiles.get(ico, []))
             contracts.append(Contract(contract_id, code1, code2, name, subject_items, cpvs, submitter))
         return contracts
+
+
+class Locality:
+
+    def __init__(self, address, gps):
+        self.address = address
+        self.gps = gps
+
+
+class InterestItem:
+
+    def __init__(self, description, embedding):
+        self.description = description
+        self.embedding = embedding
+
+
+class UserProfile:
+
+    def __init__(self, user_id, locality, interest_items):
+        self.id = user_id
+        self.locality = locality
+        self.interest_items = interest_items
+
+    def to_pandas(self):
+        updict = [{'user_id': self.id, 'address': self.locality.address, 'gps': self.locality.gps,
+                  'interest_items': [item.description for item in self.interest_items],
+                  'embeddings': [item.embedding for item in self.interest_items]}]
+        return pandas.DataFrame(updict)
+
+
+class UserProfileFactory:
+
+    @staticmethod
+    def create_profiles(df_user_profiles):
+        profiles = []
+        for index, row in df_user_profiles.iterrows():
+            user_id = row['user_id']
+            locality = Locality(row['address'], (row['gps']))
+            interest_items = [InterestItem(item, embedding) for item, embedding in
+                              zip(row['interest_items'], row['embeddings'])]
+            profiles.append(UserProfile(user_id, locality, interest_items))
+        return profiles
+
+
+class User(UserMixin):
+
+    def __init__(self, user_profile):
+        self.user_profile = user_profile
+
+    def get_id(self):
+        return str(self.user_profile.id)

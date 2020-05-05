@@ -318,9 +318,10 @@ class InterestItemDAO(PostgresDAO):
 
 
 class UserProfileDAO(PostgresDAO):
-    DEFAULT_QUERY = """select u.user_id, u.address, u.latitude, u.longitude, i.item_desc, i.feature
+    DEFAULT_QUERY = """select u.user_id, u.address, u.latitude, u.longitude, i.item_desc, i.embedding
                                 from user_profile u join
                                 interest_item i on u.user_id=i.user_id"""
+    DEFALUT_CONDITION = """where u.user_id in %s"""
 
     def _process_result(self, raw_data):
         user_profile_items = {}
@@ -338,7 +339,8 @@ class UserProfileDAO(PostgresDAO):
             user_profile['interest_items'].append(item_desc)
             user_profile['embeddings'].append(embedding)
             user_profile_items[user_id] = user_profile
-        return pandas.DataFrame(user_profile_items.values())
+        return pandas.DataFrame(user_profile_items.values(),
+                                columns=['user_id', 'address', 'gps', 'interest_items', 'embeddings'])
 
     def _truncateDB(self):
         self.run_query('truncate table interest_item')

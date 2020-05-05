@@ -4,7 +4,7 @@
     <h1>Vyhledat zakázky</h1>
     <hr>
 
-    {% from "_formhelpers.html" import render_field %}
+    {% from "_helpers.html" import render_field %}
     <form method="post">
         {{ searchform.csrf_token }}
         {{ render_field(searchform.subject) }}

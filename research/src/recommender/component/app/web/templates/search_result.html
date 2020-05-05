@@ -5,8 +5,9 @@
     <hr>
     {% include "flash_message.html" %}
 
+    {% from "_helpers.html" import render_contracts %}
     <div>
-        {% include "contract_list.html" %}
+        {{ render_contracts(contracts, 'search') }}
     </div>
 
 </div>

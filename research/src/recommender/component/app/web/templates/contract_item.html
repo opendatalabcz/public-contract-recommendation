@@ -1,6 +1,6 @@
-<div class="jumbotron" id="detail">
-    <a href="{{ '/contract/%i'%contract.id }}"><h4>{{ contract.id }}: {{ contract.name }}</h4></a>
-    <div>
+<div class="jumbortron detail interactive">
+    <a href="{{ '/contract/%i'%contract.id }}"><h4 class="{{ panel_class }}">{{ contract.id }}: {{ contract.name }}</h4></a>
+    <div class="{{ panel_class }}">
         <b>Obsahuje:</b>
         {% for subject_item in contract.subject_items[:5] %}
             {{ subject_item[:30] }}{% if subject_item|length > 30 %}...{% endif %},

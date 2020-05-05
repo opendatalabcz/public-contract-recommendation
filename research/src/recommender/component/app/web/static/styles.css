@@ -12,12 +12,27 @@ body{
 }
 
 
-#detail {
+.detail {
     background-color: snow;
     padding: 5px;
     margin-bottom: 5px;
 }
+.interactive:hover {
+    background-color: white;
+}
 
 #searchbar {
     font-size: 20px;
+}
+
+.main-panel {
+}
+
+.secondary-panel {
+    font-size: x-small;
+}
+
+h4.secondary-panel {
+    font-size: small;
+    margin: 0px
 }

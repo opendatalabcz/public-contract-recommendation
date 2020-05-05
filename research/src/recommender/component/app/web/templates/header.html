@@ -20,9 +20,18 @@
                 <li>
                     <a href="{{ url_for('search') }}"><span class="octicon octicon-search"></span> Hledat</a>
                 </li>
+                {% if current_user.is_authenticated %}
                 <li>
                     <a href="{{ url_for('profil') }}"><span class="octicon octicon-person"></span> Profil</a>
                 </li>
+                <li>
+                    <a href="{{ url_for('logout') }}"><span class="octicon octicon-sign-out"></span> Odhlásit se</a>
+                </li>
+                {% else %}
+                <li>
+                    <a href="{{ url_for('login') }}"><span class="octicon octicon-sign-in"></span> Přihlásit se</a>
+                </li>
+                {% endif %}
             </ul>
         </div>
     </div>
