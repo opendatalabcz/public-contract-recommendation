@@ -34,5 +34,25 @@ class WeightedStandardizer(Standardizer):
 
     def compute(self, val):
         val *= self.weight
+        return val
+
+
+class InverseWeightedStandardizer(Standardizer):
+
+    def __init__(self, weight=0.1):
+        self.weight = weight
+
+    def compute(self, val):
+        val *= self.weight
         val += (1 - self.weight)
+        return val
+
+
+class UpperBoundStandardizer(Standardizer):
+
+    def __init__(self, upper_bound):
+        self.upper_bound = upper_bound
+
+    def compute(self, val):
+        val /= self.upper_bound
         return val

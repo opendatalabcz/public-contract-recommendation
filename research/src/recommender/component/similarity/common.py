@@ -4,7 +4,7 @@ import numpy
 import pandas
 import textdistance
 
-from recommender.component.similarity.standardization import WeightedStandardizer
+from recommender.component.similarity.standardization import WeightedStandardizer, UpperBoundStandardizer
 from recommender.component.similarity.vector_space import AggregatedItemSimilarityComputer
 from recommender.component.similarity.geospatial import AggregatedLocalSimilarityComputer
 from recommender.component.base import Component
@@ -71,13 +71,15 @@ class ComplexSimilarityComputer(Component):
                 for contract_res in most_similar[qid]:
                     cid = contract_res['contract_id']
                     qs = similarities.get(qid, {})
-                    qs[cid] = qs.get(cid, 1) * standardizer.compute(contract_res['similarity'])
+                    qs[cid] = qs.get(cid, 0) + standardizer.compute(contract_res['similarity'])
                     similarities[qid] = qs
         if not similarities:
             return {}
         df_similar_contracts = pandas.DataFrame.from_dict(similarities, orient='index')
         s_similar_contracts = df_similar_contracts.stack()
         s_similar_contracts = s_similar_contracts.rename('similarity')
+        standardizer = UpperBoundStandardizer(sum([sc[1].weight for sc in self._similarity_computers]))
+        s_similar_contracts = s_similar_contracts.apply(standardizer.compute)
         s_similar_contracts = s_similar_contracts.rename_axis(['query_id', 'contract_id'])
         df_nlargest = s_similar_contracts.groupby(level=0).nlargest(num_results).reset_index(drop=True,
                                                                                              level=1).reset_index()
