@@ -236,9 +236,9 @@ def test_complex_similarity_computer(context):
     assert isinstance(contract_result, dict)
     assert len(contract_result) == 2
     assert 'contract_id' in contract_result
-    assert 5 == contract_result['contract_id']
+    assert 1 == contract_result['contract_id']
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.29415305631325833, contract_result['similarity'])
+    assert numpy.isclose(0.6018448744810055, contract_result['similarity'])
 
 
 def test_complex_similarity_computer2(context):
@@ -270,4 +270,4 @@ def test_complex_similarity_computer2(context):
     assert 'contract_id' in contract_result
     assert contract_result['contract_id'] == 1
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.2584875263966801, contract_result['similarity'])
+    assert numpy.isclose(0.6266058514479361, contract_result['similarity'])

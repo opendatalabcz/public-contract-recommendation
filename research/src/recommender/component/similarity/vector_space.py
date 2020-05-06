@@ -29,8 +29,29 @@ class CosineDistanceVectorComputer(DistanceVectorComputer):
         return distances, sorted_index
 
 
-class ItemDistanceComputer(Component):
+class OptimalizedCosineDistanceVectorComputer(DistanceVectorComputer):
 
+    def __init__(self, vectors):
+        vectors = numpy.array(vectors)
+        self.vectors = vectors
+        vectors_extended = vectors.T.reshape((1, vectors.shape[1], vectors.shape[0]))
+        self.vectors_norm = numpy.linalg.norm(vectors_extended, axis=1)
+
+    def _compute_matrix(self, target):
+        target = numpy.array(target)
+        target_extended = target.reshape((target.shape[0], target.shape[1], 1))
+        target_norm = numpy.linalg.norm(target_extended, axis=1)
+        dot_product = target @ self.vectors.T
+        norm = target_norm @ self.vectors_norm
+        return 1 - (dot_product / norm)
+
+    def _compute_sorted_distances(self, target, _):
+        distances = self._compute_matrix(target)
+        sorted_index = numpy.argsort(distances)
+        return distances, sorted_index
+
+
+class ItemDistanceComputer(Component):
     DEFAULT_COLUMNS = ('embeddings', 'items')
 
     def __init__(self, df_contract_items, distance_computer=None, cols=DEFAULT_COLUMNS, **kwargs):
@@ -38,10 +59,11 @@ class ItemDistanceComputer(Component):
         self._df_contract_items = df_contract_items
         self._df_embeddings_col, self._df_items_col = cols
         self._nvectors, self._nvec_to_contr = self._count_mapping(df_contract_items)
-        self._distance_vec_comp = distance_computer if distance_computer is not None else CosineDistanceVectorComputer()
+        self._distance_vec_comp = distance_computer or OptimalizedCosineDistanceVectorComputer(self._nvectors)
 
     def _count_mapping(self, df_items):
-        embeddings_col = self._df_embeddings_col if self._df_embeddings_col in df_items.columns else self.DEFAULT_COLUMNS[0]
+        embeddings_col = self._df_embeddings_col if self._df_embeddings_col in df_items.columns else \
+            self.DEFAULT_COLUMNS[0]
         vectors = []
         vec_to_entity = []
         for index, row in df_items.iterrows():
@@ -87,7 +109,8 @@ class SimilarItemsComputer(Component):
 
     def __init__(self, df_contract_items, distance_computer=None, standardizer=None, **kwargs):
         super().__init__(**kwargs)
-        self._distance_computer = distance_computer if distance_computer is not None else ItemDistanceComputer(df_contract_items)
+        self._distance_computer = distance_computer if distance_computer is not None else ItemDistanceComputer(
+            df_contract_items)
         self._standardizer = standardizer if standardizer is not None else CosineStandardizer()
 
     def compute_most_similar(self, df_query_items, num_results=1):
@@ -122,7 +145,8 @@ class AggregatedItemSimilarityComputer(SimilarItemsComputer):
         s_aggregated = df_similar_items.groupby(['query_id', 'contract_id'])[['similarity']] \
             .apply(self.wavg, "similarity", "similarity")
         s_aggregated = s_aggregated.rename('similarity')
-        df_nlargest = s_aggregated.groupby('query_id').nlargest(num_results).reset_index(drop=True, level=1).reset_index()
+        df_nlargest = s_aggregated.groupby('query_id').nlargest(num_results).reset_index(drop=True,
+                                                                                         level=1).reset_index()
         result = {query: g[['contract_id', 'similarity']].to_dict('record')
                   for query, g in df_nlargest.groupby('query_id')}
         return result
