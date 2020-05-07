@@ -1,4 +1,5 @@
 import numpy
+import pandas
 
 from recommender.component.similarity.common import ComplexSimilarityComputer
 from recommender.component.similarity.geospatial import LocalityDistanceComputer, SimilarLocalityComputer, \
@@ -271,3 +272,27 @@ def test_complex_similarity_computer2(context):
     assert contract_result['contract_id'] == 1
     assert 'similarity' in contract_result
     assert numpy.isclose(0.6261697794780968, contract_result['similarity'])
+
+
+def test_item_distance_computer_efficieny(context):
+    numpy.random.seed(42)
+    ncontracts = 1000
+    nqueries = 100
+    df_contracts = create_random_dataframe(ncontracts).rename(columns={'id': 'contract_id'})
+    df_query = create_random_dataframe(nqueries).rename(columns={'id': 'query_id'})
+
+    idc = ItemDistanceComputer(df_contracts)
+    result = idc.compute_nearest(df_query, num_results=ncontracts)
+    assert numpy.isclose(0.19712971175935512, result[0][''][0]['distance'])
+
+
+def create_random_dataframe(nentities):
+    entities = []
+    for i in range(nentities):
+        nitems = numpy.random.randint(0, 20)
+        embeddings = []
+        for j in range(nitems):
+            embedding = numpy.random.rand(300)
+            embeddings.append(embedding)
+        entities.append({'id':i, 'items': ['' for _ in range(nitems)], 'embeddings': embeddings})
+    return pandas.DataFrame(entities)

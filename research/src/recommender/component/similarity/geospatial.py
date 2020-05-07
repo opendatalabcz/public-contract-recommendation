@@ -55,6 +55,8 @@ class LocalityDistanceComputer(Component):
         super().__init__(**kwargs)
         self._df_contract_locations = df_contract_locations
         self._nvectors, self._nvec_to_contr = self._count_mapping(df_contract_locations)
+        self._contract_ids = list(self._df_contract_locations['contract_id'])
+        self._addresses = list(self._df_contract_locations['address'])
         self._distance_computer = distance_computer or ApproximatedGeoDistanceComputer(self._nvectors)
 
     def _count_mapping(self, df_locations):
@@ -67,7 +69,7 @@ class LocalityDistanceComputer(Component):
             vec_to_entity.append(index)
 
         nvectors = numpy.array(vectors, dtype=numpy.float32)
-        nvec_to_entity = numpy.array(vec_to_entity, dtype=numpy.float32)
+        nvec_to_entity = numpy.array(vec_to_entity, dtype=numpy.int)
         return nvectors, nvec_to_entity
 
     def compute_nearest(self, df_query_locations, num_results=1):
@@ -88,8 +90,8 @@ class LocalityDistanceComputer(Component):
 
             for index_contr_loc, distance in target_loc_row:
                 index_df_contr = self._nvec_to_contr[index_contr_loc]
-                contr_id = self._df_contract_locations.loc[index_df_contr, 'contract_id']
-                address = self._df_contract_locations.loc[index_df_contr, 'address']
+                contr_id = self._contract_ids[index_df_contr]
+                address = self._addresses[index_df_contr]
 
                 loc_results.append({'contract_id': contr_id, 'address': address, 'distance': distance})
 

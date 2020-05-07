@@ -60,6 +60,8 @@ class ItemDistanceComputer(Component):
         self._df_contract_items = df_contract_items
         self._df_embeddings_col, self._df_items_col = cols
         self._nvectors, self._nvec_to_contr = self._count_mapping(df_contract_items)
+        self._contract_ids = list(self._df_contract_items['contract_id'])
+        self._contract_items = list(self._df_contract_items[self._df_items_col])
         self._distance_vec_comp = distance_computer or OptimalizedCosineDistanceVectorComputer(self._nvectors)
 
     def _count_mapping(self, df_items):
@@ -73,8 +75,8 @@ class ItemDistanceComputer(Component):
             for i, e in enumerate(row[embeddings_col]):
                 vectors.append(e)
                 vec_to_entity.append((index, i))
-        nvectors = numpy.array(vectors)
-        nvec_to_entity = numpy.array(vec_to_entity)
+        nvectors = numpy.array(vectors, dtype=numpy.float32)
+        nvec_to_entity = numpy.array(vec_to_entity, dtype=numpy.int)
         return nvectors, nvec_to_entity
 
     def compute_nearest(self, df_query_items, num_results=1):
@@ -97,8 +99,8 @@ class ItemDistanceComputer(Component):
 
             for index_contr_item, distance in target_item_row:
                 index_df_contr = self._nvec_to_contr[index_contr_item][0]
-                contr_id = self._df_contract_items.loc[index_df_contr, 'contract_id']
-                contr_items = self._df_contract_items.loc[index_df_contr, self._df_items_col]
+                contr_id = self._contract_ids[index_df_contr]
+                contr_items = self._contract_items[index_df_contr]
                 index_contr_item = self._nvec_to_contr[index_contr_item][1]
                 contr_item = contr_items[index_contr_item]
 
