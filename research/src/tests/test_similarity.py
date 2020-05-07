@@ -154,7 +154,7 @@ def test_locality_distance_computer(context):
     assert 'address' in address_result
     assert 'V Jilmu 229 514 01 Jilemnice' == address_result['address']
     assert 'distance' in address_result
-    assert numpy.isclose(0.7822094, address_result['distance'])
+    assert numpy.isclose(0.7850719900135416, address_result['distance'])
 
 
 def test_locality_similarity_computer(context):
@@ -186,7 +186,7 @@ def test_locality_similarity_computer(context):
     assert 'address' in address_result
     assert 'V Jilmu 229 514 01 Jilemnice' == address_result['address']
     assert 'distance' in address_result
-    assert numpy.isclose(0.7822094, address_result['distance'])
+    assert numpy.isclose(0.7850719900135416, address_result['distance'])
     assert 'similarity' in address_result
     assert numpy.isclose(1, address_result['similarity'])
 
@@ -213,7 +213,7 @@ def test_aggregated_locality_similarity_computer(context):
     assert 'contract_id' in address_result
     assert 1 == address_result['contract_id']
     assert 'similarity' in address_result
-    assert numpy.isclose(0.9405868688654786, address_result['similarity'])
+    assert numpy.isclose(0.9375343650766038, address_result['similarity'])
 
 
 def test_complex_similarity_computer(context):
@@ -238,7 +238,7 @@ def test_complex_similarity_computer(context):
     assert 'contract_id' in contract_result
     assert 1 == contract_result['contract_id']
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.6018448744810055, contract_result['similarity'])
+    assert numpy.isclose(0.6015673741365624, contract_result['similarity'])
 
 
 def test_complex_similarity_computer2(context):
@@ -270,4 +270,4 @@ def test_complex_similarity_computer2(context):
     assert 'contract_id' in contract_result
     assert contract_result['contract_id'] == 1
     assert 'similarity' in contract_result
-    assert numpy.isclose(0.6266058514479361, contract_result['similarity'])
+    assert numpy.isclose(0.6261697794780968, contract_result['similarity'])

@@ -29,13 +29,33 @@ class GeodesicDistanceComputer(DistanceVectorComputer):
         return distances, sorted_index
 
 
+class ApproximatedGeoDistanceComputer(DistanceVectorComputer):
+    DEF_LATITUDE_TO_KILOMETERS = 71.941
+    DEF_LONGITUDE_TO_KILOMETERS = 111.319
+
+    def __init__(self, vectors, lattokm=DEF_LATITUDE_TO_KILOMETERS, lontokm=DEF_LONGITUDE_TO_KILOMETERS, **kwargs):
+        super().__init__(**kwargs)
+        vectors = numpy.array(vectors)
+        self.lattokm = lattokm
+        self.lontokm = lontokm
+        self.euclidean_vectors = numpy.empty((vectors.shape))
+        self.euclidean_vectors[:, 0] = vectors[:, 0] * self.lontokm
+        self.euclidean_vectors[:, 1] = vectors[:, 1] * self.lattokm
+
+    def _compute_sorted_distances(self, target, vectors):
+        euclidean_target = numpy.empty(target.shape)
+        euclidean_target[:, 0] = target[:, 0] * self.lontokm
+        euclidean_target[:, 1] = target[:, 1] * self.lattokm
+        return super()._compute_sorted_distances(euclidean_target, self.euclidean_vectors)
+
+
 class LocalityDistanceComputer(Component):
 
     def __init__(self, df_contract_locations, distance_computer=None, **kwargs):
         super().__init__(**kwargs)
         self._df_contract_locations = df_contract_locations
         self._nvectors, self._nvec_to_contr = self._count_mapping(df_contract_locations)
-        self._distance_computer = distance_computer if distance_computer is not None else GeodesicDistanceComputer()
+        self._distance_computer = distance_computer or ApproximatedGeoDistanceComputer(self._nvectors)
 
     def _count_mapping(self, df_locations):
         vectors = []

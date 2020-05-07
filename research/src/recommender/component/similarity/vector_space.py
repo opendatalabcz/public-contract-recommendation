@@ -1,6 +1,7 @@
 import numpy
 import pandas
 from scipy.spatial import distance as spatial_distance
+from sklearn.metrics.pairwise import euclidean_distances
 
 from recommender.component.base import Component
 from recommender.component.similarity.standardization import CosineStandardizer
@@ -9,9 +10,9 @@ from recommender.component.similarity.standardization import CosineStandardizer
 class DistanceVectorComputer(Component):
 
     def _compute_sorted_distances(self, target, vectors):
-        similarities = numpy.dot(target, vectors.T)
-        sorted_index = numpy.argsort(similarities).T[::-1].T
-        return similarities, sorted_index
+        distances = euclidean_distances(target, vectors)
+        sorted_index = numpy.argsort(distances)
+        return distances, sorted_index
 
     def compute_nearest(self, target, vectors, nresults=1):
         distances, sorted_index = self._compute_sorted_distances(target, vectors)

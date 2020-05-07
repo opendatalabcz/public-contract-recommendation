@@ -4,17 +4,17 @@ import os
 import sys
 
 import flask
-from flask import flash, session
+from flask import flash
 from flask_login import LoginManager, current_user
 from flask_session import Session
 
 from recommender.component.app.web import routes
-from recommender.component.app.web.model import Contract, ContractFactory, Submitter, UserProfileFactory, User, \
-    UserProfile, InterestItem
+from recommender.component.app.web.model import ContractFactory, UserProfileFactory, User, \
+    InterestItem
 from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
     EntityDAO
 from recommender.component.engine.engine import SearchEngine
-from recommender.component.feature import RandomEmbedder, FastTextEmbedder
+from recommender.component.feature import FastTextEmbedder
 
 DEFAULT_CONFIG_FILE = 'config.cfg'
 

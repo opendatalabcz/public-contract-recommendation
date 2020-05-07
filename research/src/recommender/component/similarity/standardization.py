@@ -5,7 +5,7 @@ class Standardizer:
 
     @staticmethod
     def compute(val):
-        return 1-val
+        return min(1, 1/val)
 
 
 class CosineStandardizer:
@@ -22,9 +22,7 @@ class Log10Standardizer(Standardizer):
         if val <= 0:
             return 1
         res = 1 / numpy.log1p(val)
-        if res > 1:
-            res = 1
-        return res
+        return min(1, res)
 
 
 class WeightedStandardizer(Standardizer):
