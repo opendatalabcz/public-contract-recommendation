@@ -32,18 +32,18 @@ class PCRecWeb(flask.Flask):
     def init_logger(self):
         level = self.pcrec_config.get('logger', 'level')
         file = self.pcrec_config.get('logger', 'file')
-        logFormatter = logging.Formatter("%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s")
-        rootLogger = logging.getLogger()
+        logFormatter = logging.Formatter("%(asctime)s.%(msecs)03d %(levelname)s %(name)s - %(funcName)s: %(message)s")
+        logger = logging.getLogger(self.__class__.__name__)
 
         fileHandler = logging.FileHandler(file)
         fileHandler.setFormatter(logFormatter)
-        rootLogger.addHandler(fileHandler)
+        logger.addHandler(fileHandler)
 
         consoleHandler = logging.StreamHandler(sys.stdout)
         consoleHandler.setFormatter(logFormatter)
-        rootLogger.addHandler(consoleHandler)
-        rootLogger.setLevel(level)
-        self.logger = rootLogger
+        logger.addHandler(consoleHandler)
+        logger.setLevel(level)
+        self.logger = logger
         self.logger.debug("Logger initialized!")
 
     def init_db(self):

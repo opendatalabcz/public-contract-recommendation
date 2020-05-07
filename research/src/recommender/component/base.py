@@ -1,10 +1,18 @@
 import time
+import logging
+
+
+def create_logger(name, level, handlers):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.handlers = handlers
+    return logger
 
 
 class Component:
 
     def __init__(self, logger=None, timer=None):
-        self.logger = logger
+        self.logger = create_logger(self.__class__.__name__, logger.level, logger.handlers) if logger else None
         self._timer = Timer(name=timer if timer is not None else type(self).__name__,
                             log=self.logger.debug if self.logger else print)
 

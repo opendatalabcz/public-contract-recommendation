@@ -110,7 +110,7 @@ class SimilarItemsComputer(Component):
     def __init__(self, df_contract_items, distance_computer=None, standardizer=None, **kwargs):
         super().__init__(**kwargs)
         self._distance_computer = distance_computer if distance_computer is not None else ItemDistanceComputer(
-            df_contract_items)
+            df_contract_items, logger=self.logger)
         self._standardizer = standardizer if standardizer is not None else CosineStandardizer()
 
     def compute_most_similar(self, df_query_items, num_results=1):
