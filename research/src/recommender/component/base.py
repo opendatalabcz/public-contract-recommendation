@@ -2,7 +2,17 @@ import time
 import logging
 
 
-def create_logger(name, level, handlers):
+def create_logger(name, level, handlers) -> logging.Logger:
+    """Creates a new logger with name, level and handlers.
+
+    Args:
+        name (str): name of the logger
+        level (int|str): specification of logging level
+        handlers (list): list of logging handlers
+
+    Returns:
+        logger: new logger object
+    """
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.handlers = handlers
@@ -10,13 +20,33 @@ def create_logger(name, level, handlers):
 
 
 class Component:
+    """Base component providing logging and time measure functions.
 
+    All other project components inherits from this class to support basic functions.
+
+    Attributes:
+        logger: a logger object to be copied for new instance logger
+    """
     def __init__(self, logger=None, timer=None):
+        """
+        Args:
+            logger (Logger): a logger object to be copied for new instance
+            timer (str): name of the timer
+        """
         self.logger = create_logger(self.__class__.__name__, logger.level, logger.handlers) if logger else None
         self._timer = Timer(name=timer if timer is not None else type(self).__name__,
                             log=self.logger.debug if self.logger else print)
 
     def print(self, msg, level='print'):
+        """Method for printing or logging.
+
+        If member logger is specified, this method uses it to log the message,
+        otherwise prints to std.output.
+
+        Args:
+            msg: message to be printed
+            level (int|str): specification of logging level
+        """
         if not self.logger:
             print(msg)
         else:
@@ -33,6 +63,16 @@ class TimerError(Exception):
 
 
 class Timer:
+    """Class providing time measure interface.
+
+    Keeps accumulated times for each named timer.
+
+    Attributes:
+        timers (dict of str: int):  static accumulation of elapsed time of named timers
+        name (str): name of current timer
+        text (str): string format for printing
+        log (function): printing/logging function
+    """
     timers = dict()
 
     def __init__(
@@ -75,11 +115,10 @@ class Timer:
 
 
 class DataProcessor(Component):
+    """Base data processing component.
 
-    def __init__(self, timer=None, **kwargs):
-        super().__init__(**kwargs)
-        self._timer = Timer(name=timer if timer is not None else type(self).__name__,
-                            log=self.logger.debug if self.logger else print)
+    Provides interface to process both single item or a collection of items.
+    """
 
     def _process_inner(self, data):
         return data
@@ -91,6 +130,17 @@ class DataProcessor(Component):
         return result
 
     def process(self, data, timer=False):
+        """Main processing method.
+
+        Recognizes whether to process all the collection or a single item.
+
+        Args:
+            data: in case of list the processing function is done item by item
+            timer (bool): if true, the processing time is measured
+
+        Returns:
+            single result or a list of results
+        """
         process_func = self._process_inner if not timer else self._process_inner_with_time
         if isinstance(data, list):
             return [process_func(item) for item in data]

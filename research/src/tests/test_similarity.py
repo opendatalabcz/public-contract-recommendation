@@ -1,3 +1,5 @@
+import time
+
 import numpy
 import pandas
 
@@ -274,7 +276,7 @@ def test_complex_similarity_computer2(context):
     assert numpy.isclose(0.6261697794780968, contract_result['similarity'])
 
 
-def test_item_distance_computer_efficieny(context):
+def test_item_distance_computer_efficiency(context):
     numpy.random.seed(42)
     ncontracts = 1000
     nqueries = 100

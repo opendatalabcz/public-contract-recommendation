@@ -11,6 +11,7 @@ from recommender.component.base import Component
 
 
 class SimilarityMachine:
+    """Base similarity computation class"""
     _text = None
     _reference = None
     _model = None
@@ -18,31 +19,42 @@ class SimilarityMachine:
     def __init__(self, model=None):
         self._model = model
 
-    def init_case(self, text, reference):
+    def _init_case(self, text, reference):
         self._text = text
         self._reference = reference
 
-    def preprocess(self):
+    def _preprocess(self):
         None
-
-    def compute(self, text, reference):
-        self.init_case(text, reference)
-        self.preprocess()
-        return self._inner_compute()
 
     def _inner_compute(self):
         return 0.5
 
+    def compute(self, text, reference) -> float:
+        """Computes the similarity of the text and reference
+
+        Args:
+            text (str): text to compute similarity for
+            reference (str): reference text to compute similarity against
+
+        Returns:
+            float: the similarity ratio
+        """
+        self._init_case(text, reference)
+        self._preprocess()
+        return self._inner_compute()
+
 
 class RandomSimilarityMachine(SimilarityMachine):
+    """Computes random 'similarity'"""
 
     def _inner_compute(self):
         return random.random()
 
 
 class JaccardSimilarityMachine(SimilarityMachine):
+    """Computes Jaccard index as a similarity measure for the texts"""
 
-    def preprocess(self):
+    def _preprocess(self):
         if isinstance(self._text, str):
             self._text = self._text.split()
         if isinstance(self._reference, str):
@@ -53,8 +65,18 @@ class JaccardSimilarityMachine(SimilarityMachine):
 
 
 class ComplexSimilarityComputer(Component):
+    """Computes complex similarities of queries and contracts.
+
+    Using specific similarity computers to compute the similarities between two pandas DataFrame.
+    Results of all similarity computers are aggregated with weighted average.
+    """
 
     def __init__(self, df_contracts, similarity_computers=None, **kwargs):
+        """
+        Args:
+            df_contracts (DataFrame): reference dataframe
+            similarity_computers (list of tuple): list of similarity computers and their weighing standardizers
+        """
         super().__init__(**kwargs)
         self._df_contracts = df_contracts
         self._similarity_computers = similarity_computers if similarity_computers is not None \
@@ -64,7 +86,26 @@ class ComplexSimilarityComputer(Component):
         ]
 
     def compute_most_similar(self, df_query, num_results=1):
+        """Computes the pairwise similarities of queries to reference contracts.
+
+        Uses the member similarity computers to compute the partial similarities between the records.
+        Uses the member weighing standardizers to compute the complex aggregated similarities.
+
+        Args:
+            df_query (DataFrame): query dataframe
+            num_results (int): number of most similar contracts to return, default is only the most similar one
+
+        Returns:
+            dict: list of n most similar reference contracts for each query
+
+            The mapping is:
+            query_id:
+                list of reference contracts:
+                    contract_id
+                    similarity
+        """
         similarities = {}
+        # compute partial similarities using computers
         for similarity_computer, standardizer in self._similarity_computers:
             most_similar = similarity_computer.compute_most_similar(df_query, num_results=numpy.iinfo(numpy.int32).max)
             for qid in most_similar:
@@ -75,6 +116,7 @@ class ComplexSimilarityComputer(Component):
                     similarities[qid] = qs
         if not similarities:
             return {}
+        # aggregate the partial results
         df_similar_contracts = pandas.DataFrame.from_dict(similarities, orient='index')
         s_similar_contracts = df_similar_contracts.stack()
         s_similar_contracts = s_similar_contracts.rename('similarity')
