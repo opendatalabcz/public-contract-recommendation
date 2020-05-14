@@ -1,3 +1,5 @@
+from typing import Tuple, Dict, List
+
 import pandas
 
 from recommender.component.base import Component
@@ -10,8 +12,26 @@ from recommender.component.similarity.geospatial import AggregatedLocalSimilarit
 
 
 class SearchEngine(Component):
+    """Represent the engine (core) of the searching respectively recommending system.
+
+    Processes diverse queries against reference dataset with the purpose of finding the most similar records
+    from the dataset to the query.
+
+    Attributes:
+        embedder (Component): embedding component for transformation of text input to vector representation
+        geocoder (Component): geocoding component for transformation of input address to GPS representation
+        num_results (int): number of results to be found for query
+        df_contracts (DataFrame): reference dataframe representing the dataset
+    """
 
     def __init__(self, df_contracts, embedder=None, geocoder=None, num_results=1, **kwargs):
+        """
+        Args:
+            df_contracts (DataFrame): reference dataframe for the dataset
+            embedder (Component): embedding component for transformation of text input to vector representation
+            geocoder (Component): geocoding component for transformation of input address to GPS representation
+            num_results (int): number of results to be found for query
+        """
         super().__init__(**kwargs)
         self.embedder = embedder if embedder is not None else RandomEmbedder(logger=self.logger)
         self.geocoder = geocoder if geocoder is not None else APIGeocoder(logger=self.logger)
@@ -42,7 +62,20 @@ class SearchEngine(Component):
                                           (sc['sc'], WeightedStandardizer(sc['weight']))
                                           for sc in self._similarity_computers.values()])
 
-    def prepare_query_items(self, query_type, query_string):
+    def prepare_query_items(self, query_type, query_string) -> Tuple:
+        """Prepares the raw query input to the inner representation.
+
+        Regarding the query type uses relevant processing component:
+            for textual subject items input uses the member embedder to transform to vector representation
+            for address input uses the member geocoder to transform to gps coordinations
+
+        Args:
+            query_type (str): type of query input
+            query_string (str): textual query input
+
+        Returns:
+            tuple: tuple of preprocessed query input string and its inner representation
+        """
         if query_type in ['subject', 'entity_subject']:
             query_items = query_string.split('\n')
             query_embeddings = self.embedder.process(query_items)
@@ -51,12 +84,34 @@ class SearchEngine(Component):
             gps = self.geocoder.gps_for_address(query_string)
             return query_string, gps
 
-    def prepare_query(self, query_type, query_string):
+    def prepare_query(self, query_type, query_string) -> Dict[str, any]:
+        """Prepares the query.
+
+        Regarding the query type builds the query with relevant columns and query items.
+
+        Args:
+            query_type (str): type of query input
+            query_string (str): textual query input
+
+        Returns:
+            dict: dictionary containing query_id, and relevant key-val pairs for specific query_type
+        """
         cols = self._similarity_computers[query_type]['cols']
         query_items = self.prepare_query_items(query_type, query_string)
         return {'query_id': 1, cols[0]: query_items[0], cols[1]: query_items[1]}
 
     def run_query(self, query_type, query_string):
+        """Runs specific query against the reference dataset.
+
+        Prepares query and runs the similarity computation.
+
+        Args:
+            query_type (str): type of query input
+            query_string (str): textual query input
+
+        Returns:
+            result: the result of similarity computer
+        """
         query = self.prepare_query(query_type, query_string)
         df_query = pandas.DataFrame([query])
         sc = self._similarity_computers[query_type]['sc']
@@ -64,15 +119,49 @@ class SearchEngine(Component):
         return result
 
     def query_by_subject(self, query_string):
+        """Runs the query of subject query type.
+
+        Args:
+            query_string (str): textual query input
+
+        Returns:
+            result: the result of similarity computer
+        """
         return self.run_query('subject', query_string)
 
     def query_by_address(self, query_string):
+        """Runs the query of locality query type.
+
+        Args:
+            query_string (str): textual query input
+
+        Returns:
+            result: the result of similarity computer
+        """
         return self.run_query('locality', query_string)
 
     def query_by_entity_subject(self, query_string):
+        """Runs the query of entity subject query type.
+
+        Args:
+            query_string (str): textual query input
+
+        Returns:
+            result: the result of similarity computer
+        """
         return self.run_query('entity_subject', query_string)
 
-    def prepare_similarity_computers(self, query_params):
+    def prepare_similarity_computers(self, query_params) -> List:
+        """Prepares similarity computers for query.
+
+        Regarding the query type collects the relevant similarity computers.
+
+        Args:
+            query_params (dict of str:str): query params containing query_type
+
+        Returns:
+            list: list of tuples of similarity computers and their standardizers
+        """
         similarity_computers = []
         for query_type in query_params:
             sc = self._similarity_computers[query_type]['sc']
@@ -81,6 +170,14 @@ class SearchEngine(Component):
         return similarity_computers
 
     def merge_queries(self, queries):
+        """Merges specific types of queries to single query
+
+        Args:
+            queries (list): list of partial queries
+
+        Returns:
+            dict: dictionary containing query_id, and merged relevant key-val pairs for specific query_type
+        """
         query = {'query_id': 1}
         for subquery in queries:
             for field in subquery:
@@ -93,6 +190,20 @@ class SearchEngine(Component):
         return query
 
     def query_by_user_profile(self, df_user_profile, query_params=None):
+        """Runs query represented by user profile against the reference dataset.
+
+        Prepares similarity computers regarding query parameters.
+        Builds the query from user profile.
+        Runs the query using prepared computers.
+
+        Args:
+            df_user_profile (DataFrame): query dataframe representing user profile with user_id, interest_items,
+                                        embeddings, address and gps columns
+            query_params (set of str): query params containing query_type
+
+        Returns:
+            result: the result of similarity computer
+        """
         if query_params:
             similarity_computers = self.prepare_similarity_computers(query_params)
             sc = ComplexSimilarityComputer(self.df_contracts,
@@ -104,6 +215,18 @@ class SearchEngine(Component):
         return result
 
     def query(self, query_params):
+        """Runs generic query against the reference dataset.
+
+        Prepares similarity computers regarding query parameters.
+        Builds the query from query parameters.
+        Runs the query using prepared computers.
+
+        Args:
+            query_params (dict of str: str): query params containing query_type and query_string
+
+        Returns:
+            result: the result of similarity computer
+        """
         query = self.merge_queries([self.prepare_query(qt, qs) for qt, qs in query_params.items()])
         df_query = pandas.DataFrame([query])
         similarity_computers = self.prepare_similarity_computers(query_params)
