@@ -7,30 +7,55 @@ from recommender.component.database.common import DBManager, ContractDataDAO, Co
 
 
 class PostgresManager(DBManager):
-
+    """Manages the psycopg2 connection"""
     def __init__(self, dbname='postgres', user='postgres', password='admin', host='localhost', port='5432', **kwargs):
         super().__init__(**kwargs)
         self._connection = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
 
 
 class PostgresDAO(Component):
+    """Abstract Postgres data access object.
+
+    Uses psycopg2 implementation of connecction.
+    """
     DEFAULT_QUERY = """select * from table"""
     DEFALUT_CONDITION = """where column in %s"""
 
     def __init__(self, connection, load_query=None, **kwargs):
+        """
+        Args:
+            connection (Connection): psycopg2 connection
+            load_query (str): default load query
+        """
         super().__init__(**kwargs)
         self._connection = connection
         self._load_query = load_query if load_query is not None else self.DEFAULT_QUERY
 
     def build_query(self, values=None):
+        """Build the default query with optional values
+        Args:
+            values (lsit): list of values
+
+        Returns:
+            str: full query
+        """
         query = self._load_query
         if values is not None:
             if '%s' not in query:
                 query += ' ' + self.DEFALUT_CONDITION
         return query
 
-    def run_query(self, values=None):
-        query = self.build_query(values)
+    def run_query(self, query=None, values=None):
+        """Runs specific query, parses results and returns data.
+
+        Args:
+            query (str): specific query, if not set, default load query is used
+            values: collection of values for the query
+
+        Returns:
+            fetched raw data from query result
+        """
+        query = query or self.build_query(values)
         self.print("Running query: {} with {}".format(query, values), 'debug')
         cursor = self._connection.cursor()
         cursor.execute(query, values)
@@ -49,13 +74,30 @@ class PostgresDAO(Component):
         return raw_data
 
     def load(self, condition=None):
+        """Runs the default laod query with optional condition
+
+        Args:
+            condition: condition parameters
+
+        Returns:
+            processed query result data
+        """
         if isinstance(condition, list):
             condition = tuple([tuple(condition)])
-        raw_data = self.run_query(condition)
+        raw_data = self.run_query(values=condition)
         return self._process_result(raw_data)
 
 
 class SubjectItemDAO(PostgresDAO):
+    """Subject item data access object
+
+    Provides loading and saving of the subject_item table.
+
+    Transforms result to dataframe with:
+        contract_id,
+        subject_items,
+        embeddings
+    """
     DEFAULT_QUERY = 'select contract_id, item_desc, embedding from subject_item'
     DEFALUT_CONDITION = """where contract_id in %s"""
 
@@ -102,6 +144,16 @@ class SubjectItemDAO(PostgresDAO):
 
 
 class CPVItemDAO(PostgresDAO):
+    """CPV item data access object
+
+    Provides loading from tables contract_cpv and cpv_code.
+
+    Transforms result to dataframe with:
+        contract_id,
+        cpv_codes,
+        cpv_items,
+        embeddings
+    """
     DEFAULT_QUERY = """
     select cntr.contract_id, cpv.code, cpv.name, cpv.embedding
     from contract_cpv cntr join cpv_code cpv on cntr.cpv_id=cpv.id """
@@ -129,6 +181,17 @@ class CPVItemDAO(PostgresDAO):
 
 
 class ContractSubmitterDAO(PostgresDAO):
+    """Contract submitter data access object
+
+    Provides loading from tables contract, submitter and entity.
+
+    Transforms result to dataframe with:
+        contract_id,
+        address,
+        gps,
+        ico,
+        entity_name
+    """
     DEFAULT_QUERY = """select c.contract_id, e.address, e.latitude, e.longitude, e.ico, e.name
                               from contract c join
                                 submitter s on c.submitter_id=s.submitter_id join
@@ -151,6 +214,15 @@ class ContractSubmitterDAO(PostgresDAO):
 
 
 class EntitySubjectDAO(PostgresDAO):
+    """Entity subject data access object
+
+    Provides loading and saving of table entity_subject.
+
+    Transforms result to dataframe with:
+        entity_id,
+        entity_items,
+        entity_embeddings
+    """
     DEFAULT_QUERY = 'select entity_id, description, embedding from entity_subject'
 
     def _process_result(self, raw_data):
@@ -194,6 +266,15 @@ class EntitySubjectDAO(PostgresDAO):
 
 
 class ContractEntitySubjectDAO(PostgresDAO):
+    """Contract entity subject data access object
+
+    Provides loading from tables contract, submitter, entity and entity_subject.
+
+    Transforms result to dataframe with:
+        contract_id,
+        entity_items,
+        entity_embeddings
+    """
     DEFAULT_QUERY = """select c.contract_id, es.description, es.embedding
                               from contract c join
                                 submitter s on c.submitter_id=s.submitter_id join
@@ -219,6 +300,21 @@ class ContractEntitySubjectDAO(PostgresDAO):
 
 
 class EntityDAO(PostgresDAO):
+    """Entity data access object
+
+    Provides loading from tables entity, entity_subject and source.
+
+    Transforms result to dataframe with:
+        ico,
+        dic,
+        name,
+        address,
+        gps,
+        entity_items,
+        entity_embeddings,
+        names,
+        urls
+    """
     DEFAULT_QUERY = """
             select e.ico, e.dic, e.name, e.address, e.latitude, e.longitude,
                 array_agg(es.description) as items, array_agg(es.embedding) as embeddings,
@@ -253,6 +349,15 @@ class EntityDAO(PostgresDAO):
 
 
 class SourceDAO(PostgresDAO):
+    """Source data access object
+
+    Provides loading from table source.
+
+    Transforms result to dataframe with:
+        ico,
+        names,
+        urls
+    """
     DEFAULT_QUERY = """
     select ico, array_agg(name) as names, array_agg(url) as urls
     from source
@@ -274,6 +379,15 @@ class SourceDAO(PostgresDAO):
 
 
 class InterestItemDAO(PostgresDAO):
+    """Interest item data access object
+
+    Provides loading and saving of table interest_item.
+
+    Transforms result to dataframe with:
+        user_id,
+        interest_items,
+        embeddings
+    """
     DEFAULT_QUERY = 'select user_id, item_desc, embedding from interest_item'
 
     def _process_result(self, raw_data):
@@ -318,6 +432,17 @@ class InterestItemDAO(PostgresDAO):
 
 
 class UserProfileDAO(PostgresDAO):
+    """User profile item data access object
+
+    Provides loading and saving of table user_profile and interest_item.
+
+    Transforms result to dataframe with:
+        user_id,
+        address,
+        gps,
+        interest_items,
+        embeddings
+    """
     DEFAULT_QUERY = """select u.user_id, u.address, u.latitude, u.longitude, i.item_desc, i.embedding
                                 from user_profile u join
                                 interest_item i on u.user_id=i.user_id"""
@@ -352,7 +477,7 @@ class UserProfileDAO(PostgresDAO):
             address = row['address']
             latitude, longitude = row['gps'][0], row['gps'][1]
             user_id = self.run_query("""insert into user_profile(address, latitude, longitude)
-                                        values (%s,%s,%s) returning user_id;""", \
+                                        values (%s,%s,%s) returning user_id;""",
                                      (address, latitude, longitude))
             self.print('Saving user: {}'.format(user_id), 'debug')
             interest_items = row['interest_items']
@@ -374,6 +499,15 @@ class UserProfileDAO(PostgresDAO):
 
 
 class DocumentDAO(PostgresDAO):
+    """Document data access object
+
+    Provides loading from table document.
+
+    Transforms result to dataframe with:
+        contract_id,
+        doc_ids,
+        doc_texts
+    """
     DEFAULT_QUERY = """select document_id, contract_id, data from document where processed=True"""
     DEFALUT_CONDITION = """where contract_id in %s"""
 
@@ -394,6 +528,16 @@ class DocumentDAO(PostgresDAO):
 
 
 class ContractDAO(PostgresDAO):
+    """Contract data access object
+
+    Provides loading from table contract.
+
+    Transforms result to dataframe with:
+        contract_id,
+        code1,
+        code2,
+        name
+    """
     DEFAULT_QUERY = """select contract_id, code1, code2, name from contract"""
     DEFALUT_CONDITION = """where contract_id in %s"""
 
@@ -411,7 +555,10 @@ class ContractDAO(PostgresDAO):
 
 
 class PostgresContractItemDAO(ContractItemDAO):
+    """Contract item data access object
 
+    Merges subject item DAO and CPV item DAO.
+    """
     def __init__(self, source, subject_item_dao=None, cpv_item_dao=None, **kwargs):
         subject_item_dao = subject_item_dao if subject_item_dao is not None else SubjectItemDAO(source, **kwargs)
         cpv_item_dao = cpv_item_dao if cpv_item_dao is not None else CPVItemDAO(source, **kwargs)
@@ -419,7 +566,10 @@ class PostgresContractItemDAO(ContractItemDAO):
 
 
 class PostgresContractDataDAO(ContractDataDAO):
+    """Contract data data access object
 
+    Merges contract DAO, CPV item DAO, subject item DAO, contract submitter DAO and contract entity subject DAO.
+    """
     def __init__(self, source, contact_dao=None, cpv_dao=None, item_dao=None, locality_dao=None,
                  entity_subject_dao=None, **kwargs):
         contract_dao = contact_dao if contact_dao is not None else ContractDAO(source, **kwargs)
