@@ -9,8 +9,15 @@ from recommender.component.feature.document import DataProcessor
 
 
 class TextAnnotator(DataProcessor):
+    """Text annotator
 
+    Provides interface to annotate text with UDPipe annotation tool.
+    """
     def __init__(self, pipeline='../model/udpipe/udpipe-ud-2.5-191206/czech-pdt-ud-2.5-191206.udpipe', **kwargs):
+        """
+        Args:
+            pipeline: may be one of: path to the UDPipe model, loaded UDPipe model or UDPipe Pipeline itself
+        """
         super().__init__(**kwargs)
         if isinstance(pipeline, str):
             self.print('Loading UDPipe model from: ' + pipeline)
@@ -19,14 +26,22 @@ class TextAnnotator(DataProcessor):
             end = time.time()
             self.print('Model loaded in: ' + str(end - start) + ' sec', 'debug')
         if isinstance(pipeline, ufal.udpipe.Model):
-            pipeline = ufal.udpipe.Pipeline(pipeline, "tokenize", \
-                                            ufal.udpipe.Pipeline.DEFAULT, \
+            pipeline = ufal.udpipe.Pipeline(pipeline, "tokenize",
+                                            ufal.udpipe.Pipeline.DEFAULT,
                                             ufal.udpipe.Pipeline.DEFAULT, "conllu")
         if not isinstance(pipeline, ufal.udpipe.Pipeline):
             raise ValueError('pipeline must be ' + ufal.udpipe.Pipeline + ' or a path to the UDPipe model')
         self._pipeline = pipeline
 
     def annotate_text(self, text):
+        """Runs annotation of text
+
+        Args:
+            text (str): text to be annotated
+
+        Returns:
+            str: annotated text
+        """
         return self._pipeline.process(text)
 
     def _process_inner(self, text):
@@ -34,9 +49,21 @@ class TextAnnotator(DataProcessor):
 
 
 class UdapiFromConlluTransformer(DataProcessor):
+    """Udapi from conllu transformer
+
+    Transforms conllu formated text to Udapi representation.
+    """
 
     @staticmethod
     def from_connlu(conllu):
+        """Creates Udapi document and initializes it with conllu string.
+
+        Args:
+            conllu (str): conllu formatted string
+
+        Returns:
+            Udapi document
+        """
         doc = Document()
         doc.from_conllu_string(conllu)
         return doc
@@ -46,9 +73,18 @@ class UdapiFromConlluTransformer(DataProcessor):
 
 
 class UdapiToStrTransformer(DataProcessor):
+    """Udapi to string transformer"""
 
     @staticmethod
     def to_string(document):
+        """Merges whole Udapi document to text string
+
+        Args:
+            document: Udapi document
+
+        Returns:
+            str: Udapi document converted to string
+        """
         lines = []
         for bundle in document.bundles:
             for tree in bundle.trees:
@@ -61,6 +97,7 @@ class UdapiToStrTransformer(DataProcessor):
 
 
 class UdapiTransformer:
+    """Abstract Udapi transformer"""
 
     @classmethod
     def _iter_sentences(cls, document):
@@ -73,6 +110,10 @@ class UdapiTransformer:
 
 
 class UdapiWordOccurrenceSentenceFilter(UdapiTransformer):
+    """Udapi word occurrence sentence filter
+
+    Filters out udapi document sentence containing keywords.
+    """
     _keywords = None
     _udapi_filters = None
 
@@ -89,6 +130,10 @@ class UdapiWordOccurrenceSentenceFilter(UdapiTransformer):
 
 
 class UdapiWordOccurrencePartSentenceFilter(UdapiTransformer):
+    """Udapi word occurrence part sentence filter
+
+    Filters out udapi document sub-sentence containing keywords.
+    """
     _keywords = None
     _udapi_filters = None
 
@@ -105,14 +150,23 @@ class UdapiWordOccurrencePartSentenceFilter(UdapiTransformer):
 
 
 class NodeFinder:
+    """Udapi document node finder
 
+    Provides interface for searching through Udapi document.
+    """
     def __init__(self, feat_val_pairs, max_dist=100, fnext_node=lambda n: n.next_node, check_current=False):
-
+        """
+        Args:
+            feat_val_pairs: specification of condition of searched features and theirs values
+            max_dist (int): maximum searched distance from origin node
+            fnext_node (func): function defining next node
+            check_current (bool): whether to check origin node or not
+        """
         self._feat_val_pairs = feat_val_pairs if isinstance(feat_val_pairs, list) else [feat_val_pairs]
         self._feat_val_pairs = [p if isinstance(p, list) else [p] for p in self._feat_val_pairs]
 
         for i, ors in enumerate(self._feat_val_pairs):
-            self._feat_val_pairs[i] = [(feat, vals if isinstance(vals, list) else [vals]) \
+            self._feat_val_pairs[i] = [(feat, vals if isinstance(vals, list) else [vals])
                                        for feat, vals in ors]
 
         for i, ors in enumerate(self._feat_val_pairs):
@@ -135,6 +189,14 @@ class NodeFinder:
         return True
 
     def check_node_attributes(self, node):
+        """Check the target features
+
+        Args:
+            node: Udapi node to be checked
+
+        Returns:
+            bool: True if any of the features values is corresponding to the nodes values.
+        """
         if any(self._check_disjunctive_node_attributes(node, ors) for ors in self._feat_val_pairs):
             return True
         return False
@@ -152,31 +214,39 @@ class NodeFinder:
         return None
 
     def find(self, origin):
+        """Runs the search from origin node
+
+        Args:
+            origin: Udapi node to start the search from
+
+        Returns:
+            first Udapi node that matches the condition, or None
+        """
         if self._check_current and self.check_node_attributes(origin):
             return origin
         return self._find_internal(origin)
 
 
 class NextNodeFinder(NodeFinder):
-
+    """Udapi document next node finder"""
     def __init__(self, feat_val_pairs, max_dist=100, check_current=False):
         super().__init__(feat_val_pairs, max_dist, lambda n: n.next_node, check_current)
 
 
 class PreviousNodeFinder(NodeFinder):
-
+    """Udapi document previous node finder"""
     def __init__(self, feat_val_pairs, max_dist=100, check_current=False):
         super().__init__(feat_val_pairs, max_dist, lambda n: n.prev_node, check_current)
 
 
 class PrecedingNodeFinder(NodeFinder):
-
+    """Udapi document preceding node finder"""
     def __init__(self, feat_val_pairs, max_depth=100, check_current=False):
         super().__init__(feat_val_pairs, max_depth, lambda n: n.parent, check_current)
 
 
 class DescendingNodeFinder(NodeFinder):
-
+    """Udapi document descending node finder"""
     def __init__(self, feat_val_pairs, max_depth=100, check_current=False):
         super().__init__(feat_val_pairs, max_depth, None, check_current)
 
@@ -190,6 +260,10 @@ class DescendingNodeFinder(NodeFinder):
 
 
 class SubmitterPartSentenceFilter(UdapiTransformer):
+    """Udapi submitter part sentence filter
+
+    Filters out udapi document sub-sentence submitter reference.
+    """
     _submitter_keywords = None
     _suplier_keywords = None
 
@@ -218,7 +292,20 @@ class SubmitterPartSentenceFilter(UdapiTransformer):
 
 
 class NonSubjectPartSentenceFilter(UdapiTransformer):
+    """Non subject part sentence filter
 
+    Filters out part of sentences that does not suit a complex condition.
+
+    The complex condition is combined of:
+        target dependency relations,
+        target verb lemmas,
+        banned UPOS tags,
+        banned node lemmas,
+        banned submitter lemmas,
+        banned location and time lemmas,
+        banned previous lemmmas,
+        banned preceding lemmas
+    """
     def __init__(self,
                  target_dep_relations=['nsubj', 'nsubj:pass', 'obj', 'obl', 'obl:arg', 'nmod'],
                  target_verb_lemmas=['zavazovat', 'doda(t|ný)', 'zajistit', 'prov(edený|ést)',
@@ -360,6 +447,19 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
         return keep_node_candidates
 
     def process(self, document):
+        """Runs the filtering process for Udapi document
+
+        Identifies candidate nodes for subject information using the complex condition.
+        Extends the candidates with their conjunctions.
+        Extends the candidates with relevant subtrees.
+        Removes non-candidate nodes.
+
+        Args:
+            document: Udapi document to be filtered
+
+        Returns:
+            filtered Udapi document
+        """
         for i2, tree in enumerate(self._iter_sentences(document)):
             if not tree.children:
                 continue
@@ -373,7 +473,7 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
                 keep_nodes.extend(node_candidates)
             keep_nodes = [n for n in keep_nodes
                           if not NodeFinder(('lemma', ['smlouva', 'uzavření', 'předmět', 'plnění']))
-                    .check_node_attributes(n)]
+                            .check_node_attributes(n)]
 
             to_remove = [n for n in tree.descendants if not n in keep_nodes]
 
@@ -387,6 +487,10 @@ class NonSubjectPartSentenceFilter(UdapiTransformer):
 
 
 class EmptyBundlesFilter:
+    """Empty bundles filter
+
+    Removes empty sentences from document.
+    """
 
     def process(self, document):
         bundles = []
@@ -403,9 +507,17 @@ class EmptyBundlesFilter:
 
 
 class ConlluSubjectContextPreprocessor(DataProcessor):
+    """Conllu subject context preprocessor
+
+    Uses specific Conllu filters to process the text.
+    """
     _transformers = None
 
     def __init__(self, transformers=None):
+        """
+        Args:
+            transformers (list): list of specific Conllu (Udapi) filters
+        """
         super().__init__()
         self._transformers = transformers \
             if transformers is not None else \
@@ -417,6 +529,16 @@ class ConlluSubjectContextPreprocessor(DataProcessor):
             ]
 
     def transform_document(self, conllu_document):
+        """Runs the processing of document.
+
+        Runs the processing of all transformers one by one.
+
+        Args:
+            conllu_document: Udapi document to be processed
+
+        Returns:
+            processed Udapi document
+        """
         for transformer in self._transformers:
             conllu_document = transformer.process(conllu_document)
         return conllu_document

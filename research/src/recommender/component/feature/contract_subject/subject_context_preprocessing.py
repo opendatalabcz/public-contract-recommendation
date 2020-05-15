@@ -6,20 +6,47 @@ from recommender.component.feature.document import find_all_occurrences_in_strin
 
 
 class TextTransformer:
+    """Base text transformer
+
+    Does nothing.
+    """
 
     def _process(self, text):
         return text
 
     def process(self, text):
+        """Runs the processing of text.
+
+        Args:
+            text (str): text to be processed
+
+        Returns:
+            str: processed text
+        """
         return self._process(text)
 
 
 class LineByLineTransformer(TextTransformer):
+    """Line by line transformer
 
+    Processes the text line by line with options filtering specific lines.
+    """
     def __init__(self, keep_attributes=False):
+        """
+        Args:
+            keep_attributes (bool): if true, keeps specific attribute lines for processing
+        """
         self._keep_attributes = keep_attributes
 
     def process(self, text):
+        """Runs the processing of text line by line.
+
+        Args:
+            text (str): text to be processed
+
+        Returns:
+            str: processed text
+        """
         lines_to_process = []
         attribute_lines = []
         if self._keep_attributes:
@@ -97,7 +124,10 @@ class BlankLinesFilter2(BlankLinesFilter1):
 
 
 class BlankLinesFilter(TextTransformer):
+    """Blank lines filter
 
+    Filters blank lines using complex statistical algorithm for identifying of blank lines.
+    """
     def __init__(self, replacement='\n', top_n_frequency=200, top_n_var_threshold=5, full_line_threshold=0.85,
                  min_max_line_length=70, min_sentence_small_char_ratio=0.6):
         self._replacement = replacement
@@ -170,7 +200,10 @@ class BlankLinesFilter3(BlankLinesFilter):
 
 
 class IrrelevantLinesFilter(LineByLineTransformer):
+    """Irrelevant lines filter
 
+    Filters irrelevant lines using keywords to identify irrelevant lines.
+    """
     def __init__(self, keywords=['strana', 'stránka'], max_line_length=75, lower=True):
         super().__init__()
         self._keywords = keywords
@@ -191,7 +224,10 @@ class IrrelevantLinesFilter(LineByLineTransformer):
 
 
 class IrrelevantLinesRegexFilter(LineByLineTransformer):
+    """Irrelevant lines regex filter
 
+    Filters irrelevant lines using regex patterns to identify irrelevant lines.
+    """
     def __init__(self, patterns=[r'www', r'[\w\-\.]+\s*@\s*([\w\-]+\.)+[\w\-]{2,4}',
                                  '(\+\d{2,3}){0,1}(\s{0,1}\d{3}){3}']):
         super().__init__()
@@ -207,7 +243,10 @@ class IrrelevantLinesRegexFilter(LineByLineTransformer):
 
 
 class TooShortLinesFilter(LineByLineTransformer):
+    """Too short lines filter
 
+    Filters non-empty lines identified as too short.
+    """
     def __init__(self, too_short_line_threshold=5):
         super().__init__()
         self._too_short_line_threshold = too_short_line_threshold
@@ -221,7 +260,10 @@ class TooShortLinesFilter(LineByLineTransformer):
 
 
 class NumeralLinesFilter(LineByLineTransformer):
+    """Numeral lines filter
 
+    Filters numeral lines identified by the ratio of numeral chars they contain.
+    """
     def __init__(self, too_many_numerals_ratio_threshold=0.5):
         super().__init__()
         self._too_many_numerals_ratio_threshold = too_many_numerals_ratio_threshold
@@ -237,7 +279,10 @@ class NumeralLinesFilter(LineByLineTransformer):
 
 
 class TooLongLinesTransformer(LineByLineTransformer):
+    """Too long lines transformer
 
+    Transforms too long lines by splitting them by special characters identified as a point structure.
+    """
     def __init__(self, forbidden_delimiters='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789',
                  special_delimiters={'-': (r'[\s,\.](-)[\s]+[^(Kč)]', 1)},
                  too_long_line_treshold=200):
@@ -301,8 +346,17 @@ class TooLongLinesTransformer(LineByLineTransformer):
 
 
 class AttributeExtractor(LineByLineTransformer):
+    """Attribute extractor
 
+    Extracts special attribute lines.
+    """
     def __init__(self, attr_tag='<ATTRIBUTE>;<ATTRIBUTE/>', keep_text=True, keep_attributes=False):
+        """
+        Args:
+            attr_tag (str): attribute pair tag mark
+            keep_text (bool):  if true, keeps the text in result
+            keep_attributes (bool): if true, keeps specific attribute lines for processing
+        """
         super().__init__(keep_attributes=keep_attributes)
         self._tag_start, self._tag_end = attr_tag.split(';')
         self._keep_text = keep_text
@@ -326,7 +380,10 @@ class AttributeExtractor(LineByLineTransformer):
 
 
 class AttributeTagger(AttributeExtractor):
+    """Attribute tagger
 
+    Tags lines with pair attribute marks.
+    """
     def __init__(self, attr_tag='<ATTRIBUTE>;<ATTRIBUTE/>', keep_text=False, **kwargs):
         super().__init__(attr_tag, keep_text, **kwargs)
 
@@ -335,7 +392,10 @@ class AttributeTagger(AttributeExtractor):
 
 
 class AttributeTagCleaner(LineByLineTransformer):
+    """Attribute tag cleaner
 
+    Removes attribute tags from lines.
+    """
     def __init__(self, attr_pattern=r'<[A-Z_]+>(.*)<[A-Z_]+/>', keep_attributes=True):
         super().__init__(keep_attributes)
         self._attr_pattern = re.compile(attr_pattern)
@@ -350,7 +410,10 @@ class AttributeTagCleaner(LineByLineTransformer):
 
 
 class QuotedContractNameExtractor(AttributeExtractor):
+    """Quoted contract name extractor
 
+    Extracts contract name using an algorithm of searching content of quotations.
+    """
     def __init__(self, name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                  false_keywords=['přílo', 'dále', 'jen'],
                  positive_keywords=['názvem'],
@@ -376,7 +439,10 @@ class QuotedContractNameExtractor(AttributeExtractor):
 
 
 class StructuredContractNameExtractor(AttributeExtractor):
+    """Structured contract name extractor
 
+    Extracts contract name using detection of name parameter structure.
+    """
     def __init__(self, name_tag='<CONTRACT_NAME>;<CONTRACT_NAME/>',
                  false_keywords=['přílo', 'dále', 'jen', '"'],
                  positive_keywords=['název', 'stavb', 'projekt', 'předmět'],
@@ -407,7 +473,10 @@ class StructuredContractNameExtractor(AttributeExtractor):
 
 
 class ItemExtractor(AttributeExtractor):
+    """Item extractor
 
+    Extracts items from text.
+    """
     def __init__(self, item_tag='<ITEM>;<ITEM/>', **kwargs):
         super().__init__(item_tag, **kwargs)
 
@@ -422,7 +491,10 @@ class ItemExtractor(AttributeExtractor):
 
 
 class ItemColonExtractor(ItemExtractor):
+    """Item colon extractor
 
+    Extracts items using detection of item after colon sign.
+    """
     def __init__(self, patterns=[r'(zboží|položk).{,10}:'], **kwargs):
         super().__init__(**kwargs)
         self._patterns = [re.compile(p) for p in patterns]
@@ -442,7 +514,10 @@ class ItemColonExtractor(ItemExtractor):
 
 
 class CPVCodeExtractor(AttributeExtractor):
+    """CPV code extractor
 
+    Extracts CPV codes using corresponding pattern matching.
+    """
     def __init__(self, cpv_tag='<CPV>;<CPV/>', pattern=r'(^|[^\d])([\d]{8}-\d)($|[^\d])', **kwargs):
         super().__init__(cpv_tag, **kwargs)
         self._pattern = re.compile(pattern)
@@ -456,6 +531,7 @@ class CPVCodeExtractor(AttributeExtractor):
 
 
 class ItemEnumerationExtractor(ItemExtractor):
+    """Abstract item enumeration extractor"""
 
     def __init__(self, enumeration_pattern=r'010(10)*', full_line_length=100, delim=':.', **kwargs):
         super().__init__(**kwargs)
@@ -495,7 +571,10 @@ class ItemEnumerationExtractor(ItemExtractor):
 
 
 class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
+    """Structured item enumeration extractor
 
+    Extracts item enumeration using an algorithm based on line lengths structure detection.
+    """
     def __init__(self, enumeration_pattern=r'010(10)*', delim=':.',
                  **kwargs):
         super().__init__(enumeration_pattern=enumeration_pattern, delim=delim, **kwargs)
@@ -511,7 +590,7 @@ class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
     def _smooth_structure(self, structure):
         for i, f in enumerate(structure):
             if f == 2:
-                if sum(structure[max(0,i-5):min(i+5, len(structure))]) < 10:
+                if sum(structure[max(0, i-5):min(i+5, len(structure))]) < 10:
                     structure[i] = 1
         return structure
 
@@ -537,7 +616,10 @@ class StructureItemEnumerationExtractor(ItemEnumerationExtractor):
 
 
 class CharItemEnumerationExtractor(ItemEnumerationExtractor):
+    """Char item enumeration extractor
 
+    Extracts item enumeration using an algorithm based on char occurrence structure detection.
+    """
     def __init__(self, enumeration_pattern=r'1+',
                  forbidden_chars='aábcčdďeéěfghiíjklmnňoópqrřsštťuúůvwxyýzž0123456789', **kwargs):
         super().__init__(enumeration_pattern=enumeration_pattern, **kwargs)
@@ -571,7 +653,10 @@ class CharItemEnumerationExtractor(ItemEnumerationExtractor):
 
 
 class CharTupleItemEnumerationExtractor(ItemEnumerationExtractor):
+    """Char tuple item enumeration extractor
 
+    Extracts item enumeration using an algorithm based on char tuple occurrence structure detection.
+    """
     def __init__(self, enumeration_pattern=r'1+', min_char_occurrences=4,
                  forbidden_tuples=['Vy', 'Př', 'Za', 'Pr', 'Ob', 'Po', '| '], **kwargs):
         super().__init__(enumeration_pattern=enumeration_pattern, **kwargs)
@@ -611,7 +696,10 @@ class CharTupleItemEnumerationExtractor(ItemEnumerationExtractor):
 
 
 class HeaderItemEnumerationExtractor(ItemEnumerationExtractor):
+    """Header item enumeration extractor
 
+    Extracts item enumeration using a header pattern matching.
+    """
     def __init__(self, header_pattern='[Pp]ředmět.{0,20}je.{0,5}$', **kwargs):
         super().__init__(**kwargs)
         self._header_pattern = header_pattern
@@ -631,7 +719,10 @@ class HeaderItemEnumerationExtractor(ItemEnumerationExtractor):
 
 
 class AddLine(LineByLineTransformer):
+    """Add line transformer
 
+    Adds a specific line to the end of text.
+    """
     def __init__(self, line='=========='):
         super().__init__()
         self._line = line
@@ -642,31 +733,61 @@ class AddLine(LineByLineTransformer):
 
 
 class ReplaceMarksTransformer:
+    """Replace marks transformer
 
+    Transforms the text using string replace.
+    """
     def __init__(self, marks_to_transform=['„', '“'], result_mark='"'):
         self._marks_to_transform = marks_to_transform
         self._result_mark = result_mark
 
     def process(self, text):
+        """Runs the processing of text.
+
+        Args:
+            text (str): text to be processed
+
+        Returns:
+            str: processed text
+        """
         for mark in self._marks_to_transform:
             text = text.replace(mark, self._result_mark)
         return text
 
 
 class RegexReplaceTransformer:
+    """Regex replace transformer
+
+    Transforms the text using regex substitution.
+    """
 
     def __init__(self, pattern_to_transform=r'\n[ \t]*([\d]+.{0,1})+', result_pattern='\n'):
         self._pattern_to_transform = pattern_to_transform
         self._result_pattern = result_pattern
 
     def process(self, text):
+        """Runs the processing of text.
+
+        Args:
+            text (str): text to be processed
+
+        Returns:
+            str: processed text
+        """
         text = re.sub(self._pattern_to_transform, self._result_pattern, text)
         return text
 
 
 class SubjectContextPreprocessor(DataProcessor):
+    """Subject context preprocessor
 
+    Uses specific filters, transformers and extractors to process the text.
+    """
     def __init__(self, transformers=None, **kwargs):
+        """
+        Args:
+            transformers (list): list of specific filters, transformers and extractors
+        """
         super().__init__(**kwargs)
         self._transformers = transformers \
             if transformers is not None else \
@@ -714,6 +835,16 @@ class SubjectContextPreprocessor(DataProcessor):
             ]
 
     def transform_text(self, text):
+        """Runs the processing of text.
+
+        Runs the processing of all transformers one by one.
+
+        Args:
+            text (str): text to be processed
+
+        Returns:
+            str: processed text
+        """
         for transformer in self._transformers:
             text = transformer.process(text)
         return text

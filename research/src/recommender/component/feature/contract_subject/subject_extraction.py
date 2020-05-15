@@ -15,7 +15,7 @@ from recommender.component.feature.document import DataProcessor
 
 
 def randomTokens():
-    """Generate a random string of fixed length """
+    """Generate a random number of random strings of random lengths"""
     tokensLength = int(random.gauss(4, 2)) + 1
     letters = string.ascii_lowercase
     tokens = []
@@ -26,8 +26,13 @@ def randomTokens():
 
 
 class AttributeMerger(DataProcessor):
+    """Attribute merger
+
+    Merges two attribute strings to one string.
+    """
 
     def merge_attributes(self, pair):
+        """Merges two attribute strings to one string."""
         attrs1, attrs2 = pair
         return attrs1 + '\n' + attrs2
 
@@ -36,8 +41,13 @@ class AttributeMerger(DataProcessor):
 
 
 class AttributeConcatenator(Component):
+    """Attribute concatenator
+
+    Concatenates the list of attributes to one attributes string.
+    """
 
     def concatenate(self, attributes):
+        """Concatenates the list of attributes to one attributes string"""
         if isinstance(attributes, list):
             attributes = '\n'.join(attributes)
         return attributes
@@ -47,8 +57,13 @@ class AttributeConcatenator(Component):
 
 
 class ItemsSplitter(Component):
+    """Items splitter
+
+    Splits one items string to a list of item strings.
+    """
 
     def split(self, items):
+        """Splits one items string to a list of item strings."""
         return [item for subitems in items for item in subitems.split('\n') if item]
 
     def process(self, items):
@@ -56,8 +71,10 @@ class ItemsSplitter(Component):
 
 
 class SubjectExtractor(DataProcessor):
+    """Abstract subject extractor"""
 
     def extract(self, text=None):
+        """Does nothing but useless list containing nothing."""
         return ['nic']
 
     def _process_inner(self, data):
@@ -65,14 +82,30 @@ class SubjectExtractor(DataProcessor):
 
 
 class RandomSubjectExtractor(SubjectExtractor):
+    """Random subject extractor"""
 
     def extract(self, text=None):
+        """Generates a list of random tokens."""
         subjects_num = int(numpy.random.exponential()) + 1
         return [randomTokens() for _ in range(subjects_num)]
 
 
 class ComplexSubjectExtractor(SubjectExtractor):
+    """Complex subject extractor
 
+    Represent whole pipeline of subject extracting process, that consists of:
+        subject context extractor,
+        subject context preprocessor,
+        attributes extractor by local characteristics,
+        text annotator,
+        udapi document creator,
+        conllu attributes preprocessor,
+        udapi to string transformer,
+        items tagger,
+        attributes merger,
+        tag cleaner,
+        item concatenator
+    """
     def __init__(self,
                  subj_context_extractor=None,
                  subj_context_preprocessor=None,
@@ -111,6 +144,16 @@ class ComplexSubjectExtractor(SubjectExtractor):
             AttributeConcatenator()
 
     def extract(self, text):
+        """Runs the extraction process of text.
+
+        Runs the processing of all stages of the pipeline.
+
+        Args:
+            text (str): text to be processed
+
+        Returns:
+            str: subject items
+        """
         subj_context = self._subj_context_extractor.process(text)
         filtered_context = self._subj_context_preprocessor.process(subj_context)
         attributes = self._attribures_extractor.process(filtered_context)

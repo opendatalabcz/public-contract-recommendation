@@ -24,13 +24,35 @@ DEF_KEYWORDS = {
 
 
 class SubjectContextExtractor(DataProcessor):
+    """Basic subject context extractor
 
+    Provides the extraction of the subject context parts of documentation.
+    Uses weighted keywords for identification of subject context part.
+    """
     def __init__(self, keywords=DEF_KEYWORDS, subj_range=2040, **kwargs):
+        """
+        Args:
+            keywords (dict of str: int): keywords specification for identifying the subject context
+            subj_range (int): default range of the subject context in number of chars
+        """
         super().__init__(**kwargs)
         self._keywords = keywords
         self._subj_range = subj_range
 
     def get_all_occurrences(self, text):
+        """Finds all occurrences of keywords and computes their rating.
+
+        Uses member keywords with their weights to initialize the rating of each of them.
+        Uses local characteristics to accumulate the rating coefficient.
+        Result keyword rating is the default rating multiplied by the coefficient.
+
+        Args:
+            text (str): text to find the keywords in
+
+        Returns:
+            list: list of all occurrences represented by a dictionary
+            containing the keyword, rating and occurrence position
+        """
         occurrences = []
         for keyword in self._keywords:
             occ = find_all_occurrences_in_string(keyword, text)
@@ -76,6 +98,14 @@ class SubjectContextExtractor(DataProcessor):
         return occurrences
 
     def get_subject_context_old(self, text):
+        """Gets the context of fixed range located by the occurrence with the highest rating.
+
+        Args:
+            text (str): text to find the context in
+
+        Returns:
+            str: found context
+        """
         occurrences = self.get_all_occurrences(text)
         df = pandas.DataFrame(occurrences).T
         df = df.sort_values('rat')
@@ -90,6 +120,16 @@ class SubjectContextExtractor(DataProcessor):
         return subj_context
 
     def get_subject_context_starts(self, text):
+        """Gets subject contexts starts.
+
+        Uses complex algorithm to identify the most relevant subject context parts starts.
+
+        Args:
+            text (str): text to find the starts in
+
+        Returns:
+            list of in: list of identified subject contexts starts
+        """
         bin_size = int(self._subj_range / 3)
         bins = int(len(text) / bin_size) + 1
         text = text.ljust(bins * bin_size)
@@ -109,18 +149,50 @@ class SubjectContextExtractor(DataProcessor):
         return starts
 
     def get_subject_context_end(self, text, start):
+        """Computes the subject context end regarding its start and fixed range.
+
+        Args:
+            text (str): text to identify the end in
+            start (int): start position of the subject context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         return min(start + self._subj_range, len(text))
 
     def get_subject_context_ends(self, text, starts):
+        """Computes the subject contexts ends.
+
+        Args:
+            text (str): text to identify ends in
+            starts (list of int): start positions of the subject contexts
+
+        Returns:
+            int: position of the identified subject context end
+        """
         return [self.get_subject_context_end(text, start) for start in starts]
 
     def get_subject_contexts(self, text):
+        """Gets multiple contexts located by subject contexts starts and subject contexts ends.
+
+        Args:
+            text (str): text to find the contexts in
+
+        Returns:
+            list of str: list of found contexts
+        """
         starts = self.get_subject_context_starts(text)
         ends = self.get_subject_context_ends(text, starts)
         subj_contexts = [text[start:end] for start, end in zip(starts, ends)]
         return subj_contexts
 
     def show_occurrence_distribution(self, text, figsize=(15, 5)):
+        """Plots the distribution of keyword occurrences
+
+        Args:
+            text (str): text to find the occurrences in
+            figsize (tuple): size of the figure
+        """
         bin_size = int(self._subj_range / 3)
         bins = int(len(text) / bin_size) + 1
         text = text.ljust(bins * bin_size)
@@ -151,14 +223,29 @@ class SubjectContextExtractor(DataProcessor):
 
 
 class SubjectContextEndDetector:
-
+    """Basic context end detector"""
     def __init__(self, text, subj_range=2040, multip=3):
+        """
+        Args:
+            text (str): text to detect the context end in
+            subj_range (int): default range of the subject context in number of chars
+            multip (int): multiplication coefficient of base subject range
+        """
         self._text = text
         self._subj_range = subj_range
         self._multip = multip
         self._end_position = None
 
     def detect(self, start_position, end_position=None):
+        """Searches for a new document mark to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         self._end_position = min(start_position + self._subj_range * self._multip, len(self._text))
         endfile_mark = '<FILE'
         end_occurrences = find_all_occurrences_in_string(endfile_mark, self._text[start_position:end_position])
@@ -168,8 +255,18 @@ class SubjectContextEndDetector:
 
 
 class SubjectContextEndNumberingDetector(SubjectContextEndDetector):
+    """Subject context end numbering detector"""
 
     def detect(self, start_position, end_position):
+        """Detects the numbering of sections to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         # klasicke cislovani \n<num>. word
         subj_prefix = self._text[max(start_position - 50, 0):start_position]
         numeral_pattern = '\n[ \t]*[\d]+[^/]'
@@ -198,8 +295,18 @@ class SubjectContextEndNumberingDetector(SubjectContextEndDetector):
 
 
 class SubjectContextEndRomanNumberingDetector(SubjectContextEndDetector):
+    """Subject context end roman numbering detector"""
 
     def detect(self, start_position, end_position):
+        """Detects the roman numbering of sections to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         # rimske cislovani
         subj_prefix = self._text[max(start_position - 50, 0):start_position]
         roman_numeral_pattern = '\s(?=[XVI])(X{0,3})(I[XV]|V?I{0,3})[\s\W]+'
@@ -217,8 +324,18 @@ class SubjectContextEndRomanNumberingDetector(SubjectContextEndDetector):
 
 
 class SubjectContextEndHeaderDetector(SubjectContextEndDetector):
+    """Subject context end header detector"""
 
     def detect(self, start_position, end_position):
+        """Searches for a specific heading keyword of sections to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         # clanek header
         subj_prefix = self._text[max(start_position - 50, 0):start_position]
         article_pattern = 'článek'
@@ -235,8 +352,18 @@ class SubjectContextEndHeaderDetector(SubjectContextEndDetector):
 
 
 class SubjectContextEndCapitalsDetector(SubjectContextEndDetector):
+    """Subject context end upper case detector"""
 
     def detect(self, start_position, end_position):
+        """Detects upper case formatted heading of text to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         # velka pismena
         capitals_pattern = '[A-ZĚŠČŘŽÝÁÍÉÚŮŇŤÓĎ ]{4,}'
         start_line = get_current_line(self._text, start_position)
@@ -257,8 +384,18 @@ class SubjectContextEndCapitalsDetector(SubjectContextEndDetector):
 
 
 class SubjectContextEndNameDetector(SubjectContextEndDetector):
+    """Subject context end name detector"""
 
     def detect(self, start_position, end_position):
+        """Searches for a specific heading keyword of name parameter to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         # pouze nazev
         article_pattern = 'název'
         start_occurrences = find_all_occurrences_in_string(article_pattern,
@@ -278,8 +415,18 @@ class SubjectContextEndNameDetector(SubjectContextEndDetector):
 
 
 class SubjectContextEndQuotationDetector(SubjectContextEndDetector):
+    """Subject context end quotation detector"""
 
     def detect(self, start_position, end_position):
+        """Searches for quotation marks to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         # nazev v uvozovkach
         start_occurrences = find_all_occurrences_in_string('[„"]',
                                                            self._text[
@@ -293,8 +440,18 @@ class SubjectContextEndQuotationDetector(SubjectContextEndDetector):
 
 
 class SubjectContextEndWordsDetector(SubjectContextEndDetector):
+    """Subject context end quotation detector"""
 
     def detect(self, start_position, end_position):
+        """Searches for special keywords to identify the end.
+
+        Args:
+            start_position (int): raw start position of the context
+            end_position (int): raw end position of the context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         end_words = ['Cena', 'Doba', 'Místo']
         for word in end_words:
             end_occurrences = find_all_occurrences_in_string(word, self._text[start_position:end_position])
@@ -307,11 +464,24 @@ class SubjectContextEndWordsDetector(SubjectContextEndDetector):
 
 
 class AdvancedSubjectContextExtractor(SubjectContextExtractor):
+    """Advanced subject context extractor
 
+    Extends the algorithm of selecting and computing the subject context starts and ends.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def get_subject_context_starts(self, text):
+        """Gets subject contexts starts.
+
+        Extends the algorithm of identifying the starts with detailed aim to the most relevant occurrence.
+
+        Args:
+            text (str): text to find the starts in
+
+        Returns:
+            list of in: list of identified subject contexts starts
+        """
         raw_context_starts = super().get_subject_context_starts(text)
         starts = []
         for start in raw_context_starts:
@@ -326,6 +496,17 @@ class AdvancedSubjectContextExtractor(SubjectContextExtractor):
         return starts
 
     def get_subject_context_end(self, text, start_position):
+        """Computes the relevant subject context end.
+
+        Uses specific detectors to identify relevant end of the context.
+
+        Args:
+            text (str): text to identify the end in
+            start_position (int): start position of the subject context
+
+        Returns:
+            int: position of the identified subject context end
+        """
         end_position = SubjectContextEndDetector(text, self._subj_range).detect(start_position)
 
         detectors = [
