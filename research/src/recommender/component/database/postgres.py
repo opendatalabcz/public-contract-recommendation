@@ -19,7 +19,7 @@ class PostgresDAO(Component):
     Uses psycopg2 implementation of connecction.
     """
     DEFAULT_QUERY = """select * from table"""
-    DEFALUT_CONDITION = """where column in %s"""
+    DEFAULT_CONDITION = """where column in %s"""
 
     def __init__(self, connection, load_query=None, **kwargs):
         """
@@ -42,7 +42,7 @@ class PostgresDAO(Component):
         query = self._load_query
         if values is not None:
             if '%s' not in query:
-                query += ' ' + self.DEFALUT_CONDITION
+                query += ' ' + self.DEFAULT_CONDITION
         return query
 
     def run_query(self, query=None, values=None):
@@ -99,7 +99,7 @@ class SubjectItemDAO(PostgresDAO):
         embeddings
     """
     DEFAULT_QUERY = 'select contract_id, item_desc, embedding from subject_item'
-    DEFALUT_CONDITION = """where contract_id in %s"""
+    DEFAULT_CONDITION = """where contract_id in %s"""
 
     def _process_result(self, raw_data):
         contract_items = {}
@@ -157,7 +157,7 @@ class CPVItemDAO(PostgresDAO):
     DEFAULT_QUERY = """
     select cntr.contract_id, cpv.code, cpv.name, cpv.embedding
     from contract_cpv cntr join cpv_code cpv on cntr.cpv_id=cpv.id """
-    DEFALUT_CONDITION = """where contract_id in %s"""
+    DEFAULT_CONDITION = """where contract_id in %s"""
 
     def _process_result(self, raw_data):
         contract_cpv_items = {}
@@ -196,7 +196,7 @@ class ContractSubmitterDAO(PostgresDAO):
                               from contract c join
                                 submitter s on c.submitter_id=s.submitter_id join
                                 entity e on s.entity_id=e.entity_id"""
-    DEFALUT_CONDITION = """where contract_id in %s"""
+    DEFAULT_CONDITION = """where contract_id in %s"""
 
     def _process_result(self, raw_data):
         locations = []
@@ -280,7 +280,7 @@ class ContractEntitySubjectDAO(PostgresDAO):
                                 submitter s on c.submitter_id=s.submitter_id join
                                 entity e on s.entity_id=e.entity_id join
                                 entity_subject es on e.entity_id=es.entity_id"""
-    DEFALUT_CONDITION = """where contract_id in %s"""
+    DEFAULT_CONDITION = """where contract_id in %s"""
 
     def _process_result(self, raw_data):
         entity_subjects = {}
@@ -446,7 +446,7 @@ class UserProfileDAO(PostgresDAO):
     DEFAULT_QUERY = """select u.user_id, u.address, u.latitude, u.longitude, i.item_desc, i.embedding
                                 from user_profile u join
                                 interest_item i on u.user_id=i.user_id"""
-    DEFALUT_CONDITION = """where u.user_id in %s"""
+    DEFAULT_CONDITION = """where u.user_id in %s"""
 
     def _process_result(self, raw_data):
         user_profile_items = {}
@@ -509,7 +509,7 @@ class DocumentDAO(PostgresDAO):
         doc_texts
     """
     DEFAULT_QUERY = """select document_id, contract_id, data from document where processed=True"""
-    DEFALUT_CONDITION = """where contract_id in %s"""
+    DEFAULT_CONDITION = """where contract_id in %s"""
 
     def _process_result(self, raw_data):
         contract_documents = {}
@@ -539,7 +539,7 @@ class ContractDAO(PostgresDAO):
         name
     """
     DEFAULT_QUERY = """select contract_id, code1, code2, name from contract"""
-    DEFALUT_CONDITION = """where contract_id in %s"""
+    DEFAULT_CONDITION = """where contract_id in %s"""
 
     def _process_result(self, raw_data):
         contracts = []
