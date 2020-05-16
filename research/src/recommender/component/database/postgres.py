@@ -620,10 +620,10 @@ class PostgresContractDataDAO(ContractDataDAO):
     """
     def __init__(self, source, contact_dao=None, cpv_dao=None, item_dao=None, locality_dao=None,
                  entity_subject_dao=None, **kwargs):
-        contract_dao = contact_dao if contact_dao is not None else ContractDAO(source, **kwargs)
-        cpv_dao = cpv_dao if cpv_dao is not None else CPVItemDAO(source, **kwargs)
-        item_dao = item_dao if item_dao is not None else SubjectItemDAO(source, **kwargs)
-        locality_dao = locality_dao if locality_dao is not None else ContractSubmitterDAO(source, **kwargs)
-        entity_subject_dao = entity_subject_dao if entity_subject_dao is not None else ContractEntitySubjectDAO(source,
-                                                                                                                **kwargs)
+        contract_dao = contact_dao if contact_dao is not None else ContractDAO(connection=source, **kwargs)
+        cpv_dao = cpv_dao if cpv_dao is not None else CPVItemDAO(connection=source, **kwargs)
+        item_dao = item_dao if item_dao is not None else SubjectItemDAO(connection=source, **kwargs)
+        locality_dao = locality_dao if locality_dao is not None else ContractSubmitterDAO(connection=source, **kwargs)
+        entity_subject_dao = entity_subject_dao if entity_subject_dao is not None else ContractEntitySubjectDAO(
+            connection=source, **kwargs)
         super().__init__(contract_dao, cpv_dao, item_dao, locality_dao, entity_subject_dao, **kwargs)

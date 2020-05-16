@@ -45,7 +45,7 @@ def test_query_by_address(context):
     assert 'contract_id' in contract_result
     assert contract_result['contract_id'] == 0
     assert 'similarity' in contract_result
-    assert numpy.isclose(contract_result['similarity'], 0.31935185257094634)
+    assert numpy.isclose(contract_result['similarity'], 0.3189298806145963)
 
 
 def test_query_by_entity_subject(context):
@@ -72,8 +72,8 @@ def test_query_by_entity_subject(context):
 
 @pytest.mark.parametrize(
     ['address', 'ref_result'],
-    [('Jilemnice', [(0, 0.8428498116752551), (5, 0.7669956706563666)]),
-     ('Vrchlabí', [(5, 0.8459703073776009), (0, 0.7671120302862459)])]
+    [('Jilemnice', [(0, 0.8428498116752551), (5, 0.7665913483183965)]),
+     ('Vrchlabí', [(5, 0.8459703073776009), (0, 0.7667012658151682)])]
 )
 def test_query(context, address, ref_result):
     embedder = context.get_fasttext_embedder()
