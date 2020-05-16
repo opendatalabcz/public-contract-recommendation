@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="jumbotron" id="landing-info">
+    <h1>Profil</h1>
+    <hr>
+    {% include "flash_message.html" %}
+    ID: {{ user_profile.id }}<br>
+
+    {% from "_helpers.html" import render_field %}
+    <form method="post">
+        {{ render_field(form.locality) }}
+        ({{ user_profile.locality.gps[0] }}, {{ user_profile.locality.gps[1] }})
+        {{ render_field(form.interest_items) }}
+        {{ render_field(form.cached_items) }}
+        <input type="submit" value="Uložit">
+    </form>
+
+</div>
+{% endblock %}

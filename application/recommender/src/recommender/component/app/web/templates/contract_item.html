@@ -1,0 +1,14 @@
+<div class="jumbortron detail interactive">
+    <a href="{{ '/contract/%i'%contract.id }}"><h4 class="{{ panel_class }}">{{ contract.id }}: {{ contract.name }}</h4></a>
+    <div class="{{ panel_class }}">
+        <b>Obsahuje:</b>
+        {% for subject_item in contract.subject_items[:5] %}
+            {{ subject_item[:30] }}{% if subject_item|length > 30 %}...{% endif %},
+        {% endfor %}
+        {% if contract.subject_items|length > 5 %}...{% endif %}
+        {% if contract.subject_items|length == 0 %}neznámé{% endif %}
+    </div>
+    <div>
+        <b>Zadavatel:</b> {{ contract.submitter.name }}; {{ contract.submitter.address }}
+    </div>
+</div>

@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="jumbotron" id="landing-info">
+    <h1>Vyhledat zakázky</h1>
+    <hr>
+
+    {% from "_helpers.html" import render_field %}
+    <form method="post">
+        {{ searchform.csrf_token }}
+        {{ render_field(searchform.subject) }}
+        {{ render_field(searchform.address) }}
+        {{ render_field(searchform.entity_subject) }}
+        <input type="submit" value="Hledat">
+    </form>
+
+</div>
+{% endblock %}

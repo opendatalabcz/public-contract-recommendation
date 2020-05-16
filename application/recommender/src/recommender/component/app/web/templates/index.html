@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="jumbotron" id="landing-info">
+    <h1>Vítejte!</h1>
+    <hr>
+
+    {% from "_helpers.html" import render_field, render_contracts %}
+    <form method="post">
+        <div class="row">
+            {{ searchform.csrf_token }}
+            {{ searchform.search(id="searchbar", class='col-11 col-s-12', placeholder='hledej') }}
+            <input class="col-1 col-s-12" type="submit" value="Hledat">
+        </div>
+    </form>
+     <div class="row">
+        <div class="col-9 col-s-9 main-panel">
+            {% set panel_class = 'main-panel' %}
+            <div>
+                <h2>Zakázky pro Vás</h2>
+                {{ render_contracts(contracts, panel_class) }}
+            </div>
+        </div>
+         <div class="col-3 col-s-12 secondary-panel">
+             {% set panel_class = 'secondary-panel' %}
+             {% if locality_contracts is defined %}
+             <div>
+                 <h3>Blízké zakázky</h3>
+                 {{ render_contracts(locality_contracts, panel_class) }}
+             </div>
+             {% endif %}
+             {% if subject_contracts is defined %}
+             <div>
+                 <h3>Zakázky se zajímavým předmětem</h3>
+                 {{ render_contracts(subject_contracts, panel_class) }}
+             </div>
+             {% endif %}
+             {% if entity_subject_contracts is defined %}
+             <div>
+                 <h3>Zákázky podobných zadavatelů</h3>
+                 {{ render_contracts(entity_subject_contracts, panel_class) }}
+             </div>
+             {% endif %}
+         </div>
+    </div>
+
+</div>
+{% endblock %}

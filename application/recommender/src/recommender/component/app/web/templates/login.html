@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="jumbotron" id="landing-info">
+    <h1>Přihlášení</h1>
+    <hr>
+    {% include "flash_message.html" %}
+
+
+    {% from "_helpers.html" import render_field %}
+    <form method="post">
+        {{ form.csrf_token }}
+      <dl>
+        {{ render_field(form.icologin) }}
+        <p>
+        {{ render_field(form.idlogin) }}
+      </p></dl>
+      <p><input type="submit" value="Přihlásit se">
+    </p></form>
+
+
+</div>
+{% endblock %}
