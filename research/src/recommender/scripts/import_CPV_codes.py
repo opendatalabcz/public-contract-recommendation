@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 root_logger = logging.getLogger()
 
-psycopg2_conn = psycopg2.connect(dbname='public_contracts_v2', user='postgres', password='Profinit1', host='193.85.191.172',
+psycopg2_conn = psycopg2.connect(dbname='public_contracts', user='postgres', password='admin', host='localhost',
                                  port='5432')
 
 embedder = FastTextEmbedder(FASTTEXT_PATH, logger=root_logger)
