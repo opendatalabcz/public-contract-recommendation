@@ -45,13 +45,14 @@ def char_ignore_mask(chars):
     return mask
 
 
-def find_all_occurrences_in_string(pattern, text, lower=True):
+def find_all_occurrences_in_string(pattern, text, lower=True, max_occurrences=1000):
     """Finds all starting positions of a pattern in text
 
     Args:
         pattern: either str or re.Pattern
         text (str): text to find the pattern in
         lower (bool): whether to find the pattern in original text or lower cased text
+        max_occurrences (int): maximum number of occurrences
 
     Returns:
 
@@ -62,7 +63,11 @@ def find_all_occurrences_in_string(pattern, text, lower=True):
         text = text.lower()
     if not isinstance(pattern, re.Pattern):
         pattern = re.compile(pattern)
-    occurrences = [m.start() for m in pattern.finditer(text)]
+    occurrences = []
+    for i, m in enumerate(pattern.finditer(text)):
+        occurrences.append(m.start())
+        if i > max_occurrences:
+            break
     return occurrences
 
 

@@ -1,6 +1,7 @@
 import re
 import pandas
 import numpy
+import random
 
 from recommender.component.base import DataProcessor
 
@@ -248,7 +249,7 @@ class SubjectContextEndDetector:
         """
         self._end_position = min(start_position + self._subj_range * self._multip, len(self._text))
         endfile_mark = '<FILE'
-        end_occurrences = find_all_occurrences_in_string(endfile_mark, self._text[start_position:end_position])
+        end_occurrences = find_all_occurrences_in_string(endfile_mark, self._text[start_position:self._end_position])
         if len(end_occurrences) > 0:
             self._end_position = start_position + end_occurrences[0]
         return self._end_position
@@ -468,8 +469,9 @@ class AdvancedSubjectContextExtractor(SubjectContextExtractor):
 
     Extends the algorithm of selecting and computing the subject context starts and ends.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, max_contexts=10, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._max_contexts = max_contexts
 
     def get_subject_context_starts(self, text):
         """Gets subject contexts starts.
@@ -483,6 +485,8 @@ class AdvancedSubjectContextExtractor(SubjectContextExtractor):
             list of in: list of identified subject contexts starts
         """
         raw_context_starts = super().get_subject_context_starts(text)
+        if len(raw_context_starts) > self._max_contexts:
+            raw_context_starts = random.sample(raw_context_starts, self._max_contexts)
         starts = []
         for start in raw_context_starts:
             end = super().get_subject_context_end(text, start)
