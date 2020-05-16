@@ -158,6 +158,32 @@ class CPVItemDAO(PostgresDAO):
     select cntr.contract_id, cpv.code, cpv.name, cpv.embedding
     from contract_cpv cntr join cpv_code cpv on cntr.cpv_id=cpv.id """
     DEFAULT_CONDITION = """where contract_id in %s"""
+    DEFAULT_CPV_CODE_QUERY = """select id, code, name, parent_id, embedding from cpv_code"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._cpv_enum = None
+
+    def loadCPVEnumFromDB(self):
+        """Runs the default CPV enumeration laod query
+
+        Returns:
+            processed query result data
+        """
+        raw_data = self.run_query(self.DEFAULT_CPV_CODE_QUERY)
+
+        cpv_codes = {}
+        total_codes = len(raw_data)
+        self.print("Loading total " + str(total_codes) + " codes")
+        for i, cpv in enumerate(raw_data):
+            cpv_id = cpv[0]
+            code = cpv[1]
+            name = cpv[2]
+            cpv_parent_id = cpv[3]
+            embedding = cpv[4]
+            cpv_codes[code] = {'id': cpv_id, 'name': name, 'cpv_parent_id': cpv_parent_id, 'embedding': embedding}
+        self._cpv_enum = cpv_codes
+        return pandas.DataFrame.from_dict(cpv_codes, orient='index')
 
     def _process_result(self, raw_data):
         contract_cpv_items = {}
@@ -178,6 +204,28 @@ class CPVItemDAO(PostgresDAO):
             contract_cpv_items[contract_id] = contract
         return pandas.DataFrame(contract_cpv_items.values(),
                                 columns=['contract_id', 'cpv_codes', 'cpv_items', 'embeddings'])
+
+    def save(self, df_contracts):
+        for index, row in df_contracts.iterrows():
+            contract_id = row['contract_id']
+            self.print('Saving contract: {}'.format(contract_id), 'debug')
+            cpv_codes = row['cpv_codes']
+
+            for i, cpv_code in enumerate(cpv_codes):
+                cpv = self._cpv_enum.get(cpv_code, None)
+                if not cpv:
+                    continue
+                self.print('    ' + cpv_code, 'debug')
+                cpv_id = cpv['id']
+                cursor = self._connection.cursor()
+
+                postgres_insert_query = """INSERT INTO contract_cpv (contract_id, cpv_id)
+                                            VALUES (%s,%s)"""
+                record_to_insert = (contract_id, cpv_id)
+                cursor.execute(postgres_insert_query, record_to_insert)
+
+                self._connection.commit()
+                cursor.close()
 
 
 class ContractSubmitterDAO(PostgresDAO):
