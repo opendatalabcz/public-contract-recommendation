@@ -199,11 +199,9 @@ class PCRecWeb(flask.Flask):
     def _error_page(error):
         return flask.render_template('error.html', error=error), error.code
 
-
-login_manager = LoginManager()
-app = PCRecWeb.create_app(login_manager)
-
-
-@login_manager.user_loader
-def load_user(user_id):
-    return app.load_user(user_id)
+if __name__ == '__main__':
+    login_manager = LoginManager()
+    app = PCRecWeb.create_app(login_manager)
+    @login_manager.user_loader
+    def load_user(user_id):
+        return app.load_user(user_id)
