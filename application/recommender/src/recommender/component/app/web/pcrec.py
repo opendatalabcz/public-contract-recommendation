@@ -186,6 +186,8 @@ class PCRecWeb(flask.Flask):
     def create_config(config_filename=None):
         cfg = configparser.ConfigParser()
         cfg.optionxform = str
+        if not config_filename:
+            config_filename = os.getenv('PCREC_CONFIG', None)
         cfg_filename = config_filename or DEFAULT_CONFIG_FILE
 
         if os.access(cfg_filename, os.R_OK):
