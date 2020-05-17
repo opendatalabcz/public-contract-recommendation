@@ -18,7 +18,7 @@ The whole project consist of functional modules:
 - **engine** - contains components representing the search engine of the system
 - **app** - contains the runnable application of the whole project
 
-For detailed specification of each module see documentation (`build/sphinx/html/index.html`).
+For detailed specification of each module see Documentation_.
 
 Install
 =======
@@ -65,8 +65,11 @@ To build the documentation run::
 
     python setup.py docs
 
-Note
-====
+The documentation is built in: `build/sphinx/html/index.html`
 
-This project has been set up using PyScaffold 3.2.3. For details and usage
-information on PyScaffold see https://pyscaffold.org/.
+..
+  Note
+  ====
+
+  This project has been set up using PyScaffold 3.2.3. For details and usage
+  information on PyScaffold see https://pyscaffold.org/.
