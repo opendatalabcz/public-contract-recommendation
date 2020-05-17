@@ -6,7 +6,6 @@ import sys
 import flask
 from flask import flash
 from flask_login import LoginManager, current_user
-from flask_session import Session
 
 from recommender.component.app.web import routes
 from recommender.component.app.web.model import ContractFactory, UserProfileFactory, User, \
@@ -14,7 +13,7 @@ from recommender.component.app.web.model import ContractFactory, UserProfileFact
 from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
     EntityDAO
 from recommender.component.engine.engine import SearchEngine
-from recommender.component.feature import FastTextEmbedder
+from recommender.component.feature import FastTextEmbedder, RandomEmbedder
 
 DEFAULT_CONFIG_FILE = 'config.cfg'
 
@@ -177,10 +176,8 @@ class PCRecWeb(flask.Flask):
         cfg = PCRecWeb.create_config()
         app = PCRecWeb(cfg, import_name=__name__)
         # Check Configuration section for more details
-        app.config['SESSION_TYPE'] = cfg.get('webapp', 'SESSION_TYPE')
+        # app.config['SESSION_TYPE'] = cfg.get('webapp', 'SESSION_TYPE')
         app.config['SECRET_KEY'] = cfg.get('webapp', 'SECRET_KEY')
-        sess = Session()
-        sess.init_app(app)
         routes.init_app(app)
         login_manager.init_app(app)
         return app
