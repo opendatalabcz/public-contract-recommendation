@@ -2,4 +2,4 @@
 Contributors
 ============
 
-* Milan Vancl <mvancl@profinit.eu>
+* Milan Vancl <vanclmil@fit.cvut.cz>
