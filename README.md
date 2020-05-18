@@ -6,10 +6,20 @@ Autorem diplomové práce je vanclmil@fit.cvut.cz
 
 # Obsah
 
-## Research
+## application
 
-Obsahuje části vypracované pří technologickém a metodologickém výzkumu
+Obsahuje výslednou implementaci projektu jako kompletní Python balíček obsahující zdrojové kódy, dokumentaci, testy apod.
+Více o balíčku viz. [dokumentace](application/recommender/README.rst)
 
-## Zapis
+## research
 
-Obsahuje poznámky, odkazy a text k diplomové práci
+Obsahuje jednotlivé části řešené při technologickém a metodologickém výzkumu v rámci práce:
+
+- veškeré zdrojové kódy používané při výzkumu (vlastní či upravné kódy knihovny třetích stran) ([zde](research/src/)),
+- částečné výsledky zmiňované v práci ([zde](research/model/)),
+- neobsahuje modely, data ani různá virtuální prostředí používané při výzkumu.
+
+## thesis
+
+Obsahuje výsledný text diplomové práce a jeho zdrojový kód ([zde](thesis/text/)).
+Dále obsauje poznámky, odkazy a průběžný zápis ([zde](thesis/other/)).
