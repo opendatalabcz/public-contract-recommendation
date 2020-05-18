@@ -39,10 +39,36 @@ The tests require dependency:
 - FastText binary model - change the path to the model in `tests/config.cfg` to provide this dependency (model: `wiki.cs
   <https://dl.fbaipublicfiles.com/fasttext/vectors-wiki/wiki.cs.zip>`_)
 
+Database initialization
+=======================
+
+    Disclaimer: this is the most complex and time consuming part of application management
+    (for instance, time estimation of collecting and processing one year data is in the order of a few weeks).
+
+The whole project is built upon specific data so it is necessary to initialize a database.
+
+By default a Postgres database is used (there is already an implementation of Postgres data access layer used by the application).
+
+Tha main part of data used in this project is managed by parallel project public-contracts_ so to create and initialize a Postgres database follow its instructions.
+
+.. _public-contracts: https://github.com/opendatalabcz/public-contracts
+
+To finalize the initialization run following scripts to process all data:
+
+- enrich_entities.py_ - Enriches submitter information
+- import_CPV_codes.py_ - Imports CPV codes from CSV
+- extract_cpv_codes_from_contracts.py_ - Extracts CPV codes from contracts
+- extract_items_from_contracts.py_ - Extracts subject items from contracts
+
+.. _enrich_entities.py: src/recommender/scripts/enrich_entities.py
+.. _import_CPV_codes.py: src/recommender/scripts/import_CPV_codes.py
+.. _extract_cpv_codes_from_contracts.py: src/recommender/scripts/extract_cpv_codes_from_contracts.py
+.. _extract_items_from_contracts.py: src/recommender/scripts/extract_items_from_contracts.py
+
 Run application
 ===============
 
-If all tests passed, you can run the demo application with::
+If all tests passed and the database is created, you can run the demo application with::
 
     python ./src/recommender/scripts/run_app.py
 
