@@ -14,7 +14,7 @@ from recommender.component.app.web.model import ContractFactory, UserProfileFact
 from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
     EntityDAO
 from recommender.component.engine.engine import SearchEngine
-from recommender.component.feature import FastTextEmbedder, RandomEmbedder
+from recommender.component.feature.embedding import FastTextEmbedder, RandomEmbedder
 
 DEFAULT_CONFIG_FILE = 'config.cfg'
 
@@ -193,6 +193,8 @@ class PCRecWeb(flask.Flask):
     def create_config(config_filename=None):
         cfg = configparser.ConfigParser()
         cfg.optionxform = str
+        if not config_filename:
+            config_filename = os.getenv('PCREC_CONFIG', None)
         cfg_filename = config_filename or DEFAULT_CONFIG_FILE
 
         if os.access(cfg_filename, os.R_OK):
@@ -204,16 +206,18 @@ class PCRecWeb(flask.Flask):
     def _error_page(error):
         return flask.render_template('error.html', error=error), error.code
 
+if __name__ == '__main__':
+    login_manager = LoginManager()
+    app = PCRecWeb.create_app(login_manager)
+    @login_manager.user_loader
+    def load_user(user_id):
+        return app.load_user(user_id)
 
-login_manager = LoginManager()
-app = PCRecWeb.create_app(login_manager)
+    @app.context_processor
+    def inject_debug():
+        return dict(debug=app.debug)
 
 
-@app.context_processor
-def inject_debug():
-    return dict(debug=app.debug)
-
-
-@login_manager.user_loader
-def load_user(user_id):
-    return app.load_user(user_id)
+    @login_manager.user_loader
+    def load_user(user_id):
+        return app.load_user(user_id)
