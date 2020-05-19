@@ -29,7 +29,7 @@ class Submitter:
 
 class Contract:
 
-    def __init__(self, contract_id, code1, code2, name, subject_items, embeddings, cpvs, submitter):
+    def __init__(self, contract_id, code1, code2, name, subject_items, embeddings, cpvs, submitter, similarity):
         self.id = contract_id
         self.code1 = code1
         self.code2 = code2
@@ -38,6 +38,7 @@ class Contract:
         self.embeddings = embeddings
         self.cpvs = cpvs
         self.submitter = submitter
+        self.similarity = similarity
 
 
 class ContractFactory:
@@ -64,7 +65,9 @@ class ContractFactory:
                 cpvs = [CPVCode(cpv_code, cpv_name) for cpv_code, cpv_name in zip(row['cpv_codes'], row['cpv_items'])]
             ico = row['ico'].strip()
             submitter = Submitter(ico, row['entity_name'], row['address'], row['subject_items'], profiles.get(ico, []))
-            contracts.append(Contract(contract_id, code1, code2, name, subject_items, embeddings, cpvs, submitter))
+            similarity = row['similarity']
+            contracts.append(
+                Contract(contract_id, code1, code2, name, subject_items, embeddings, cpvs, submitter, similarity))
         return contracts
 
 
@@ -93,8 +96,8 @@ class UserProfile:
 
     def to_pandas(self):
         updict = [{'user_id': self.id, 'address': self.locality.address, 'gps': self.locality.gps,
-                  'interest_items': [item.description for item in self.interest_items+self.cache],
-                  'embeddings': [item.embedding for item in self.interest_items+self.cache]}]
+                   'interest_items': [item.description for item in self.interest_items + self.cache],
+                   'embeddings': [item.embedding for item in self.interest_items + self.cache]}]
         return pandas.DataFrame(updict)
 
 

@@ -11,4 +11,10 @@
     <div>
         <b>Zadavatel:</b> {{ contract.submitter.name }}; {{ contract.submitter.address }}
     </div>
+    {% if debug is sameas true %}
+        <div>
+            Similarity: {{ contract.similarity }}
+        </div>
+    {% endif %}
+
 </div>

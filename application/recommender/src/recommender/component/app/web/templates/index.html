@@ -4,7 +4,7 @@
     <h1>Vítejte!</h1>
     <hr>
 
-    {% from "_helpers.html" import render_field, render_contracts %}
+    {% from "_helpers.html" import render_field, render_contracts with context %}
     <form method="post">
         <div class="row">
             {{ searchform.csrf_token }}

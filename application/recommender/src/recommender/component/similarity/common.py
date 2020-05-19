@@ -4,7 +4,8 @@ import numpy
 import pandas
 import textdistance
 
-from recommender.component.similarity.standardization import WeightedStandardizer, UpperBoundStandardizer
+from recommender.component.similarity.standardization import WeightedStandardizer, UpperBoundStandardizer, \
+    RandomStandardizer
 from recommender.component.similarity.vector_space import AggregatedItemSimilarityComputer
 from recommender.component.similarity.geospatial import AggregatedLocalSimilarityComputer
 from recommender.component.base import Component
@@ -71,11 +72,12 @@ class ComplexSimilarityComputer(Component):
     Results of all similarity computers are aggregated with weighted average.
     """
 
-    def __init__(self, df_contracts, similarity_computers=None, **kwargs):
+    def __init__(self, df_contracts, similarity_computers=None, random_bias_rate=0.0, **kwargs):
         """
         Args:
             df_contracts (DataFrame): reference dataframe
             similarity_computers (list of tuple): list of similarity computers and their weighing standardizers
+            random_bias_rate (float): the rate of random bias, 0 means no bias, 1 means total random bias
         """
         super().__init__(**kwargs)
         self._df_contracts = df_contracts
@@ -84,6 +86,7 @@ class ComplexSimilarityComputer(Component):
             (AggregatedItemSimilarityComputer(self._df_contracts), WeightedStandardizer(1)),
             (AggregatedLocalSimilarityComputer(self._df_contracts), WeightedStandardizer(0.1))
         ]
+        self.random_bias_rate = random_bias_rate
 
     def compute_most_similar(self, df_query, num_results=1):
         """Computes the pairwise similarities of queries to reference contracts.
@@ -122,6 +125,8 @@ class ComplexSimilarityComputer(Component):
         s_similar_contracts = s_similar_contracts.rename('similarity')
         standardizer = UpperBoundStandardizer(sum([sc[1].weight for sc in self._similarity_computers]))
         s_similar_contracts = s_similar_contracts.apply(standardizer.compute)
+        random_standardizer = RandomStandardizer(self.random_bias_rate)
+        s_similar_contracts = s_similar_contracts.apply(random_standardizer.compute)
         s_similar_contracts = s_similar_contracts.rename_axis(['query_id', 'contract_id'])
         df_nlargest = s_similar_contracts.groupby(level=0).nlargest(num_results).reset_index(drop=True,
                                                                                              level=1).reset_index()

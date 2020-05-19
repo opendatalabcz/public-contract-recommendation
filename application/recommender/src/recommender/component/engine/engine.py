@@ -24,19 +24,21 @@ class SearchEngine(Component):
         df_contracts (DataFrame): reference dataframe representing the dataset
     """
 
-    def __init__(self, df_contracts, embedder=None, geocoder=None, num_results=1, **kwargs):
+    def __init__(self, df_contracts, embedder=None, geocoder=None, num_results=1, random_bias_rate=0.0, **kwargs):
         """
         Args:
             df_contracts (DataFrame): reference dataframe for the dataset
             embedder (Component): embedding component for transformation of text input to vector representation
             geocoder (Component): geocoding component for transformation of input address to GPS representation
             num_results (int): number of results to be found for query
+            random_bias_rate (float): the rate of random bias, 0 means no bias, 1 means total random bias
         """
         super().__init__(**kwargs)
         self.embedder = embedder if embedder is not None else RandomEmbedder(logger=self.logger)
         self.geocoder = geocoder if geocoder is not None else APIGeocoder(logger=self.logger)
         self.num_results = num_results
         self.df_contracts = df_contracts
+        self.random_bias_rate = random_bias_rate
         self._similarity_computers = {
             'subject': {
                 'sc': AggregatedItemSimilarityComputer(self.df_contracts, logger=self.logger),
@@ -60,7 +62,8 @@ class SearchEngine(Component):
             ComplexSimilarityComputer(self.df_contracts,
                                       similarity_computers=[
                                           (sc['sc'], WeightedStandardizer(sc['weight']))
-                                          for sc in self._similarity_computers.values()])
+                                          for sc in self._similarity_computers.values()],
+                                      random_bias_rate=self.random_bias_rate)
 
     def prepare_query_items(self, query_type, query_string) -> Tuple:
         """Prepares the raw query input to the inner representation.
@@ -207,7 +210,8 @@ class SearchEngine(Component):
         if query_params:
             similarity_computers = self.prepare_similarity_computers(query_params)
             sc = ComplexSimilarityComputer(self.df_contracts,
-                                           similarity_computers=similarity_computers)
+                                           similarity_computers=similarity_computers,
+                                           random_bias_rate=self.random_bias_rate)
         else:
             sc = self._full_similarity_computer
         df_query = df_user_profile.rename(columns={'user_id': 'query_id', 'interest_items': 'items'})
@@ -231,6 +235,7 @@ class SearchEngine(Component):
         df_query = pandas.DataFrame([query])
         similarity_computers = self.prepare_similarity_computers(query_params)
         complex_similarity_computer = ComplexSimilarityComputer(self.df_contracts,
-                                                                similarity_computers=similarity_computers)
+                                                                similarity_computers=similarity_computers,
+                                                                random_bias_rate=self.random_bias_rate)
         result = complex_similarity_computer.compute_most_similar(df_query, self.num_results)
         return result
