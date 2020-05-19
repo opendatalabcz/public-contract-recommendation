@@ -1,3 +1,3 @@
-from recommender.component.app.web.pcrec import app
+from recommender.component.app.web.pcrec import create_app
 
-app.run()
+create_app().run()
