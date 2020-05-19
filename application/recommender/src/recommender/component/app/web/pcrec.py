@@ -14,7 +14,7 @@ from recommender.component.app.web.model import ContractFactory, UserProfileFact
 from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
     EntityDAO
 from recommender.component.engine.engine import SearchEngine
-from recommender.component.feature import FastTextEmbedder, RandomEmbedder
+from recommender.component.feature.embedding import FastTextEmbedder, RandomEmbedder
 
 DEFAULT_CONFIG_FILE = 'config.cfg'
 
