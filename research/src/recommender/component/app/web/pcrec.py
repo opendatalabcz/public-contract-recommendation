@@ -4,6 +4,7 @@ import os
 import sys
 
 import flask
+import pandas
 from flask import flash
 from flask_login import LoginManager, current_user
 
@@ -13,7 +14,7 @@ from recommender.component.app.web.model import ContractFactory, UserProfileFact
 from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
     EntityDAO
 from recommender.component.engine.engine import SearchEngine
-from recommender.component.feature import FastTextEmbedder
+from recommender.component.feature import FastTextEmbedder, RandomEmbedder
 
 DEFAULT_CONFIG_FILE = 'config.cfg'
 
@@ -79,19 +80,24 @@ class PCRecWeb(flask.Flask):
         df_contracts = cddao.load()
         df_contracts = df_contracts.rename(columns={'subject_items': 'items'})
         path_to_model = self.pcrec_config.get('embedder', 'path')
-        self.engine = SearchEngine(df_contracts, embedder=FastTextEmbedder(path_to_model, logger=self.logger), num_results=10,
+        self.engine = SearchEngine(df_contracts,
+                                   embedder=FastTextEmbedder(path_to_model, logger=self.logger),
+                                   # embedder=RandomEmbedder(logger=self.logger),
+                                   num_results=10,
+                                   random_bias_rate=0.0,
                                    logger=self.logger)
         self.logger.debug("Done")
 
     def init_users(self):
         self.cached_user_profiles = {}
 
-    def get_contracts(self, contract_ids):
+    def get_contracts(self, contract_ids, similarities=None):
         cddao = self.dbmanager.get(PostgresContractDataDAO)
         df_contracts = cddao.load(condition=contract_ids)
         sorted_index = dict(zip(contract_ids, range(len(contract_ids))))
         df_contracts['contract_id_rank'] = df_contracts['contract_id'].map(sorted_index)
-        df_contracts = df_contracts.sort_values('contract_id_rank')
+        df_contracts = df_contracts.sort_values('contract_id_rank').reset_index(drop=True)
+        df_contracts['similarity'] = pandas.Series(similarities) if similarities else None
         df_profiles = self.get_profiles(df_contracts['ico'].tolist())
         return ContractFactory.create_contracts(df_contracts, df_profiles)
 
@@ -158,7 +164,8 @@ class PCRecWeb(flask.Flask):
             flash('Nenalezena žádná položka!')
             return []
         contract_ids = [res['contract_id'] for res in list(result.values())[0]]
-        contracts = self.get_contracts(contract_ids)
+        similarities = [res['similarity'] for res in list(result.values())[0]]
+        contracts = self.get_contracts(contract_ids, similarities)
         return contracts
 
     def search(self, form):
@@ -200,6 +207,11 @@ class PCRecWeb(flask.Flask):
 
 login_manager = LoginManager()
 app = PCRecWeb.create_app(login_manager)
+
+
+@app.context_processor
+def inject_debug():
+    return dict(debug=app.debug)
 
 
 @login_manager.user_loader

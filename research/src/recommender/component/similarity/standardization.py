@@ -14,7 +14,7 @@ class Standardizer:
         Returns:
             float: standardized value
         """
-        return min(1, 1/val)
+        return min(1, 1 / val)
 
 
 class CosineStandardizer(Standardizer):
@@ -30,7 +30,7 @@ class CosineStandardizer(Standardizer):
         Returns:
             float: standardized value
         """
-        return (2-val)/2
+        return (2 - val) / 2
 
 
 class Log1pStandardizer(Standardizer):
@@ -95,4 +95,27 @@ class UpperBoundStandardizer(Standardizer):
             float: standardized value
         """
         val /= self.upper_bound
+        return val
+
+
+class RandomStandardizer(Standardizer):
+    """Random standardizer
+
+    Attributes:
+        rate (float): the rate of random influence
+    """
+
+    def __init__(self, rate=1.0):
+        self.rate = rate
+
+    def compute(self, val):
+        """Computes standardized value with a random bias.
+
+        Args:
+            val (float): value to standardize
+
+        Returns:
+            float: standardized value
+        """
+        val *= numpy.random.uniform(1 - self.rate, 1.0)
         return val

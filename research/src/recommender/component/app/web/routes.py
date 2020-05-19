@@ -1,3 +1,5 @@
+import numpy
+
 from flask import session, render_template, request, flash, redirect
 from flask_login import login_user, login_required, logout_user, current_user
 
@@ -46,7 +48,7 @@ def init_app(app):
                                    locality_contracts=locality_contracts, subject_contracts=subject_contracts,
                                    entity_subject_contracts=entity_subject_contracts)
         else:
-            contracts = app.get_contracts(((1, 9, 10, 12, 839, 70, 849, 6),))
+            contracts = app.get_contracts(numpy.random.randint(0, 1000, size=10).tolist())
             return render_template('index.html', contracts=contracts, searchform=searchform)
 
     @app.route('/search', methods=['GET', 'POST'])
@@ -56,7 +58,7 @@ def init_app(app):
             data = searchform.subject.data + searchform.address.data + searchform.entity_subject.data
             if not data == '':
                 return search_results(searchform)
-        contracts = app.get_contracts(((1, 9, 10, 12, 839, 70, 849, 6),))
+        contracts = app.get_contracts(numpy.random.randint(0, 1000, size=10).tolist())
         return render_template('search.html', contracts=contracts, searchform=searchform)
 
     @app.route('/contract/<int:contract_id>', methods=['GET'])
