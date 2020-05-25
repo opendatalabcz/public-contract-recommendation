@@ -78,7 +78,7 @@ class Timer:
     def __init__(
             self,
             name=None,
-            text="{}: Elapsed time: {:0.4f} seconds",
+            text="{}: {} Elapsed time: {:0.4f} seconds",
             log=print,
     ):
         self._start_time = None
@@ -98,7 +98,7 @@ class Timer:
 
         self._start_time = time.perf_counter()
 
-    def stop(self):
+    def stop(self, msg=None):
         """Stop the timer, and report the elapsed time"""
         if self._start_time is None:
             raise TimerError(f"Timer is not running. Use .start() to start it")
@@ -107,7 +107,7 @@ class Timer:
         self._start_time = None
 
         if self.log:
-            self.log(self.text.format(self.name, elapsed_time))
+            self.log(self.text.format(self.name, msg, elapsed_time))
         if self.name:
             self.timers[self.name] += elapsed_time
 

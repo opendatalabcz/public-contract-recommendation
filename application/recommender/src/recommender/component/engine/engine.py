@@ -46,7 +46,7 @@ class SearchEngine(Component):
                 'cols': ('items', 'embeddings')},
             'locality': {
                 'sc': AggregatedLocalSimilarityComputer(self.df_contracts, logger=self.logger),
-                'weight': 0.2,
+                'weight': 0.1,
                 'cols': ('address', 'gps')},
             'entity_subject': {
                 'sc': AggregatedItemSimilarityComputer(self.df_contracts,
@@ -55,7 +55,7 @@ class SearchEngine(Component):
                                                                                                     'entity_items'),
                                                                                               logger=self.logger),
                                                        logger=self.logger),
-                'weight': 0.2,
+                'weight': 0.1,
                 'cols': ('items', 'embeddings')},
         }
         self._full_similarity_computer = \

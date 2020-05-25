@@ -81,6 +81,8 @@ class OptimalizedCosineDistanceVectorComputer(DistanceVectorComputer):
 
     def _compute_matrix(self, target):
         target = numpy.array(target)
+        if len(target.shape) != 2:
+            return numpy.empty(0)
         # compute target vector norms
         target_extended = target.reshape((target.shape[0], target.shape[1], 1))
         target_norm = numpy.linalg.norm(target_extended, axis=1)
@@ -132,6 +134,8 @@ class ItemDistanceComputer(Component):
             if not isinstance(row[embeddings_col], list):
                 continue
             for i, e in enumerate(row[embeddings_col]):
+                if numpy.all((e == 0)) or numpy.any(numpy.isnan(e)):
+                    continue
                 vectors.append(e)
                 vec_to_entity.append((index, i))
         nvectors = numpy.array(vectors, dtype=numpy.float32)
@@ -261,6 +265,16 @@ class AggregatedItemSimilarityComputer(SimilarItemsComputer):
         w = group[weight_name]
         return (d * w).sum() / w.sum()
 
+    @staticmethod
+    def _weighted_average(df, data_col, weight_col, by_col):
+        # algorithm taken from https://stackoverflow.com/a/44683506/13484859
+        df['_data_times_weight'] = df[data_col] * df[weight_col]
+        df['_weight_where_notnull'] = df[weight_col] * pandas.notnull(df[data_col])
+        g = df.groupby(by_col)
+        result = g['_data_times_weight'].sum() / g['_weight_where_notnull'].sum()
+        del df['_data_times_weight'], df['_weight_where_notnull']
+        return result
+
     def compute_most_similar(self, df_query_items, num_results=1) -> Dict[int, List[Dict[str, float]]]:
         """Computes the similarities of queries to reference contracts.
 
@@ -293,8 +307,9 @@ class AggregatedItemSimilarityComputer(SimilarItemsComputer):
             return {}
         df_similar_items = pandas.DataFrame(similar_items_flat)
         # weighted similarities of items by queries and contracts
-        s_aggregated = df_similar_items.groupby(['query_id', 'contract_id'])[['similarity']] \
-            .apply(self.wavg, "similarity", "similarity")
+        self._timer.start()
+        s_aggregated = self._weighted_average(df_similar_items, 'similarity', 'similarity')
+        self._timer.stop('groupby2')
         s_aggregated = s_aggregated.rename('similarity')
         # filter n most similar
         df_nlargest = s_aggregated.groupby('query_id').nlargest(num_results).reset_index(drop=True,

@@ -10,7 +10,7 @@ from flask_login import LoginManager, current_user
 
 from recommender.component.app.web import routes
 from recommender.component.app.web.model import ContractFactory, UserProfileFactory, User, \
-    InterestItem
+    InterestItem, Contract
 from recommender.component.database.postgres import PostgresManager, PostgresContractDataDAO, SourceDAO, UserProfileDAO, \
     EntityDAO
 from recommender.component.engine.engine import SearchEngine
@@ -67,7 +67,7 @@ class PCRecWeb(flask.Flask):
                 array_agg(es.description) as items, array_agg(es.embedding) as embeddings,
                 null, null
             from entity e
-            left join entity_subject es on e.entity_id=es.entity_id
+            join entity_subject es on e.entity_id=es.entity_id
             where e.ico in %s
             group by e.ico, e.dic, e.name, e.address, e.latitude, e.longitude"""
         equery = self.dbmanager.create_manager(EntityDAO, load_query=equery)
@@ -150,13 +150,13 @@ class PCRecWeb(flask.Flask):
         embeddings = self.engine.embedder.process(items)
         profile.interest_items = [InterestItem(item, embedding) for item, embedding in zip(items, embeddings)]
         citems = profile_form.cached_items.data.split('\n')
-        cembeddings = self.engine.embedder.process(items)
+        cembeddings = self.engine.embedder.process(citems)
         profile.cache = [InterestItem(item, embedding) for item, embedding in zip(citems, cembeddings)]
 
-    def update_user_profile(self, contract):
+    def update_user_profile(self, data):
         profile = current_user.user_profile
-        items = contract.subject_items
-        embeddings = contract.embeddings
+        items = data.subject_items if isinstance(data, Contract) else data.split('\n')
+        embeddings = data.embeddings if isinstance(data, Contract) else self.engine.embedder.process(items)
         profile.cache += [InterestItem(item, embedding) for item, embedding in zip(items, embeddings)]
 
     def process_result(self, result):
@@ -170,6 +170,8 @@ class PCRecWeb(flask.Flask):
 
     def search(self, form):
         searchquery = form.get_query()
+        if current_user.is_authenticated:
+            self.update_user_profile(searchquery['subject'])
         result = self.engine.query(searchquery)
         return self.process_result(result)
 

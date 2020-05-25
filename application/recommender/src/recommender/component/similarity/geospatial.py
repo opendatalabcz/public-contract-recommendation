@@ -104,7 +104,10 @@ class LocalityDistanceComputer(Component):
         for index, row in df_locations.iterrows():
             if not isinstance(row['gps'], tuple):
                 continue
-            vectors.append(list(row['gps']))
+            gps = numpy.array(row['gps'], dtype=numpy.float64)
+            if gps.shape != (2,) or numpy.all((gps == 0)) or numpy.any(numpy.isnan(gps)):
+                continue
+            vectors.append(gps)
             vec_to_entity.append(index)
 
         nvectors = numpy.array(vectors, dtype=numpy.float32)

@@ -12,8 +12,10 @@
 {% endmacro %}
 
 {% macro render_contracts(contracts, panel_class) %}
-    {% for contract in contracts %}
-        {% include "contract_item.html" %}
-    {% endfor %}
+    {% if contracts %}
+        {% for contract in contracts %}
+            {% include "contract_item.html" %}
+        {% endfor %}
+    {% endif %}
 {% endmacro %}
 
