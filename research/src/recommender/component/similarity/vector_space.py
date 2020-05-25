@@ -308,7 +308,7 @@ class AggregatedItemSimilarityComputer(SimilarItemsComputer):
         df_similar_items = pandas.DataFrame(similar_items_flat)
         # weighted similarities of items by queries and contracts
         self._timer.start()
-        s_aggregated = self._weighted_average(df_similar_items, 'similarity', 'similarity')
+        s_aggregated = self._weighted_average(df_similar_items, 'similarity', 'similarity', ['query_id', 'contract_id'])
         self._timer.stop('groupby2')
         s_aggregated = s_aggregated.rename('similarity')
         # filter n most similar
