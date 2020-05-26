@@ -35,7 +35,9 @@
 \usepackage{listings}
 \usepackage{tabto}
 \usepackage{changepage}
+\usepackage{subcaption}
 \newenvironment{example}{\begin{adjustwidth}{1cm}{}}{\end{adjustwidth}}
+% \titlespacing*{\subsubsection*}{0pt}{3.25ex plus 1ex minus .2ex}{0.5em}
 
 \department{Katedra aplikované matematiky}
 \title{Open-source doporučovací systém pro české veřejné zakázky}
@@ -123,7 +125,8 @@ Ve veřejných zakázkách se tedy přirozeně nakládá s veřejnými prostřed
 
 % Pro umožnění dodržení všech pravidel řízení zakázek existuje několik systémů, které více či méně usnadňují zadavatelům práci s jejich zadáváním.
 
-Umožnění dodržení všech pravidel řízení zakázek zajišťuje hned několik systémů, které více či méně usnadňují zadavatelům práci s jejich zadáváním.
+% Umožnění dodržení všech pravidel řízení zakázek zajišťuje hned několik systémů, které více či méně usnadňují zadavatelům práci s jejich zadáváním.
+\section{Systémy pro podporu zadávání veřejných zakázek}
 
 \paragraph{Informační systém o veřejných zakázkách}
 (dále jen ISVZ) poskytuje obecné informace o zadávání veřejných zakázek, informace o dodavatelích, vyhledávač zakázek či dodavatelů, základní přehled o dalších podpůrných systémech, různé datasety a statistiky.
@@ -160,6 +163,7 @@ je další nezávislý vyhledávač zakázek, zadavatelů a dodavatelů. Aplikac
 \paragraph{Hlídač státu}
  je nezisková organizace, jejíž cílem je transparentní státní správa. Systém funguje v podobě webové platformy, kde se na jednom místě kontrolují, analyzují, vysvětlují a propojují smlouvy z registru smluv, veřejné zakázky, dotace, detailní financování a sponzory politických stran i politiky samotné\cite{hlidacstatu}. Hlídač státu disponuje silným vyhledávačem, pomocí kterého si uživatel může nastavit odběr novinek odpovídajících zadaným kritériím. Platforma je dostupná z www.hlidacstatu.cz.
 
+\newpage
 \section{Shrnutí}
 \label{sec:current_systems_summary}
 Přestože se některé stávající systémy snaží integrovat informace o zakázkách i z ostatních systémů, lze narazit na zakázky, které ani jejich vyhledávače nenaleznou.
@@ -183,8 +187,10 @@ Například předmět zakázky může být v dokumentaci specifikován příliš
 Kromě dalších vlastností by mohla být hodnotná i lokalizační podobnost či podobnost na základě předmětu podnikání zadavatele, kdy pro uživatele bude pravděpodobně zajímavější zakázka ze sousední obce (a případně v oboru uživatelova podnikání), než jí podobná zakázka z druhé strany země.
 
 V této kapitole dále pojednávám o datech a zdrojích zmíněných vlastností využitelných v doporučovacím systému veřejných zakázek.
+\newpage
 
-\section{Dokumenty veřejných zakázek}
+\section{Typy dat a jejich zdroje}
+\subsection{Dokumenty veřejných zakázek}
 \label{data&domain_dokumenty_vz}
 
 Dokumenty veřejných zakázek jsou stěžejní datovou částí celého systému. Lze v nich dohledat většina podstatných informací potřebných pro doporučování. Zbytek potenciálně užitečných informací, které v dokumentaci nejsou zmíněné přímo, bývá nějakým způsobem často z dokumentace alespoň odkazován.
@@ -197,7 +203,7 @@ API profilových nástrojů poskytují pro každý z profilů jednotné XML rozh
 
 Dokumentace veřejných zakázek se běžně skládají z několika částí a v různých formátech. Často se vyskytují textové dokumenty (\textit{doc}/\textit{pdf}) jako jsou výzvy k podání nabídek, zadávací dokumentace, vzory smluv, krycí listy, oznámení o výběrech zadavatelů či finální smlouvy (obvykle podepsané a oskenované listy smluv ve formátu \textit{pdf}). Dále se v dokumentacích vyskytují přílohy (projektové dokumentace, specifikace, dodatky...) v různých datových formátech (\textit{doc}, \textit{pdf}, \textit{xls}, \textit{zip}).
 
-\section{Kategorie produktů a služeb}
+\subsection{Kategorie produktů a služeb}
 
 Veřejné zakázky mají obecně definovaný slovník kategorií předmětu. Jsou jím tzv. CPV kódy (z angl. \uv{Common Procurement Vocabulary}). Tento slovník je vydaný Evropským parlamentem a je tak jednotný pro všechny členské státy EU, přičemž pro každý jazyk členských států existuje mutace tohoto slovníku.
 
@@ -243,8 +249,8 @@ Struktura klasifikačního systému CPV se skládá z hlavního a doplňkového 
 Přestože zadavatelé CPV kódy zadávají při uveřejňování ve Věstníku, není zcela jednoduché k zakázkám kódy dohledat, protože samotné nástroje pro profily zpravidla tyto kódy nepodporují a Věstník neposkytuje API pro dotazování na informace o konkrétní zakázce.
 
 CPV kódy bývají uvedené v konkrétních dokumentech VZ, ovšem zdaleka ne vždy.
-
-\section{Katalog produktů a služeb}
+\newpage
+\subsection{Katalog produktů a služeb}
 \label{sec:product_catalog}
 
 Exaktně definovaná struktura kategorií CPV kódů přináší strojovému zpracování VZ různé důsledky. Přínosné je to, že se s nimi na obecné rovině jednoduše pracuje. Na druhou stranu je ovšem jejich obecnost někdy příliš omezující.
@@ -255,7 +261,7 @@ K tomu by bylo zapotřebí mít vhodně strukturovaný katalog všech možných 
 
 Jako příklad velikého katalogu uvedu internetový porovnávač cen Heureka.cz, který obsahuje více než 29 milionů produktů\cite{heureka}. Heureka, jako standardní internetový obchod, neposkytuje veřejné API pro listování položek z~katalogu. Jediný možný způsob jak standardně přistoupit k jejich obsahu je tedy přes webové rozhraní, které ovšem nepodporuje rozsáhlejší stránkování než 20 položek na stránku. To znamená, že samotné vylistování všech položek pro načtení celého katalogu s názvy produktů by znamenalo nejméně 1,5 milionu požadavků a za stabilní odezvy 0,3 vteřiny na požadavek by se tak při sériovém stahování samotný katalog stahoval déle než 5 dní. Navíc za předpokladu, že jedna položka bude mít název dlouhý zhruba 100 znaků, budou data skládající se z pouhých názvů položek dosahovat řádu jednotek gigabajtů.
 
-\section{Data o lokacích}
+\subsection{Lokalita zadavatele}
 \label{sec:data_locality}
 
 V úvodu této kapitoly zmiňuji také místní zařazení zakázek, které by doporučování mohlo pozitivně obohatit o upřednostňování \uv{blízkých} zakázek oproti \uv{dalekým}.
@@ -268,7 +274,7 @@ Počítání podobnosti (respektive inverzně vzdálenosti) adres samotných ned
 
 Například platforma Mapy.cz poskytuje API pro jednoduché dotazování na GPS souřadnice konkrétní adresy.
 
-\section{Data o předmětu podnikání zadavatelů}
+\subsection{Předmět podnikání zadavatele}
 \label{sec:data_subsub}
 
 Posledním zmíněným typem informace je předmět podnikání zadavatele.
@@ -284,6 +290,7 @@ Aby byl doporučovací algoritmus sytému schopný s daty zakázek efektivně pr
 
 O jednotlivých částech extrakce vlastností zakázek pojednávám dále v podkapitolách této kapitoly.
 
+\newpage
 \section{Klasifikace dokumentů}
 
 V případě, že původní data používané doporučovacím systémem nedisponují kompletně všemi vlastnostmi, které jsou k doporučování přínosné či nutné, je na místě jejich automatické doplnění (klasifikování či regrese).
@@ -463,7 +470,7 @@ Přestože v systému neaplikuji automatickou klasifikaci dokumentů, některé 
 
 Pro tyto účely implementuji extraktor CPV kódů z textu, který podle regulárního výrazu vyhledává  všechny řetězce odpovídající formátu CPV kódu.
 
-
+\newpage
 \section{Embedding dokumentů}
 \label{sec:document_embedding}
 Dnešní digitální výpočetní technologie spoléhají bez výjimky na číselnou reprezentaci dat. Některá data je možné přirozeným způsobem zobrazovat do spojitého prostoru, jako například obraz reprezentovaný dvourozměrným popisem barev, či zvuk popsaný průběhem signálu, zatímco jiná data takto přirozeně reprezentovat nelze.
@@ -497,37 +504,38 @@ Přístup využívající vnitřní reprezentaci dat v podobě číselných vekt
 
 Modely neuronových sítí mají schopnost naučení získávat obohacené reprezentace vstupních dat, které využívají k řešení úloh souvisejících s textem. Takto naučené sítě obsahují skryté vrstvy, kde jsou data reprezentovaná právě číselnými vektory.
 
-\subsection{Klasické metody}
-\subsubsection{Bag-of-words}
+\subsubsection{Klasické metody}
+\subsubsection*{Bag-of-words}
 Metoda reprezentující text jako (multi)množiny vyskytujících se slov -- tzv. „bag-of-words“ (dále BOW). Každý dokument je zastoupen vektorem o délce velikosti slovníku, kde každá pozice zastupuje počet výskytů daného slova. Z~této podstaty metoda neuchovává žádnou gramatickou ani souslednou informaci o textu. Viz. obrázek \ref{fig:palachy2019BOW}.
 \begin{figure}\centering
 	\includegraphics[width=0.5\textwidth]{images/palachy2019/palachy2019_BOW.png}
 	\caption{Příklad reprezentace BOW\cite{palachy2019}}\label{fig:palachy2019BOW}
 \end{figure}
 
-\subsubsection{Bag-of-n-grams}
+\subsubsection*{Bag-of-n-grams}
 Metoda se snaží oproti klasickému BOW omezit ztrátu informace o pořadí. Místo výskytu slov tak počítá výskyty n--slovných sousloví. Klasický BOW je tak případ této metody pro n = 1. Hlavní problém této metody je nelineární závislost velikosti slovníku na počtu unikátních slov. Proto se často užívají techniky ke snížení velikosti slovníku. Viz. obrázek \ref{fig:palachy2019BONG}.
 \begin{figure}\centering
 	\includegraphics[width=0.5\textwidth]{images/palachy2019/palachy2019_BONG.png}
 	\caption{Schéma reprezentace bag-of-n-grams\cite{palachy2019}}\label{fig:palachy2019BONG}
 \end{figure}
 
-\subsubsection{tf-idf}
+\subsubsection*{tf-idf}
 Předešlé metody počítají jednotlivé výskyty, což není zcela objektivní metrika, protože některá slova se vyskytují obecně častěji, čímž se stávají méně důležitými. Alternativou je vážící schéma „term frequency – inverse document frequency“ (dále \textit{tf-idf}). Toto schéma se skládá ze dvou složek: četnost slova v dokumentu (\textit{tf}) a převrácená četnost slova ve všech dokumentech (\textit{idf}). Pro výsledné ohodnocení se složky násobí, přičemž ve výpočtu \textit{tf} roste s počtem výskytů, zatímco \textit{idf} je vysoké, když je slovo vzácné.
 
-\subsection{Modelování témat}
-\subsubsection{Latent Dirichlet allocation}
+\subsubsection{Modelování témat}
+\subsubsection*{Latent Dirichlet allocation}
 LDA je generativní statistický model opírající se o myšlenku, že „každý dokument lze popsat distribucí témat a každé téma může být popsáno distribucí slov“. Při vytváření modelu z korpusu dokumentů vzniká skrytá (latentní) vrstva abstraktních témat. Každý dokument je poté reprezentován jako výběr z Dirichletova rozdělení nad tématy a každé téma jako výběr z Dirichletova rozdělení nad slovy. Hlavním užitím LDA je neřízené odhalování témat v dokumentech, tzv. modelování témat (z angl. topic modelling). Existují avšak i užití, kde latentní prostor témat se využívá jako prostor pro embedding dokumentů. Viz. obrázek \ref{fig:palachy2019LDA}.
 \begin{figure}\centering
 	\includegraphics[width=0.8\textwidth]{images/palachy2019/palachy2019_LDA.png}
 	\caption{Ukázka přechodu z BOW na LDA\cite{palachy2019}}\label{fig:palachy2019LDA}
 \end{figure}
 
-\subsection{Metody učení bez učitele}
+\newpage
+\subsubsection{Metody učení bez učitele}
 Většina modelů text embeddingu byla navržena na základě myšlenky distribuční hypotézy (z angl. The Distributional Hypothesis), podle které slova vyskytující se ve stejných kontextech tíhnou k podobnému významu. Tuto myšlenku o slovech modely dále rozšiřuji různými přístupy i pro delší části textu.
 
-\subsubsection{word2vec}
-Jak už bylo řečeno úvodní kapitole, word2vec\cite{mikolov2013} zaznamenal převrat v oboru zpracování přirozeného jazyka. Word2vec je mělká (dvouvrstvá) neuronová síť, která dokáže matematicky podchytit vazby mezi slovy z korpusu. Jako příklad úspěšného objevu se uvádí široce známá formule:
+\subsubsection*{word2vec}
+Jak už bylo řečeno v úvodní kapitole, word2vec\cite{mikolov2013} zaznamenal převrat v oboru zpracování přirozeného jazyka. Word2vec je mělká (dvouvrstvá) neuronová síť, která dokáže matematicky podchytit vazby mezi slovy z korpusu. Jako příklad úspěšného objevu se uvádí široce známá formule:
 \begin{equation}
 word2vec('king' ) - word2vec('man' ) + word2vec('woman' ) \cong word2vec('queen')
 \end{equation}
@@ -538,25 +546,33 @@ Tvůrci modelu přichází se dvěma architekturami. První je CBOW (z angl. con
 	\caption{Architektury CBOW a skip-gram\cite{mikolov2013}}\label{fig:mikolov2013word2vec}
 \end{figure}
 
-\subsubsection{n-gram embeddingy}
+\newpage
+\subsubsection*{n-gram embeddingy}
 V práci \cite{mikolov2013b} autoři rozšiřují skip-gram algoritmus modelu word2vec pro použití na krátkých frázích. Místo jednoslovných tokenů tak při učení modelu používají několikaslovné fráze. Takový přístup je přirozeně nevhodný pro delší fráze kvůli rychlému růstu velikosti slovníku se zvyšující se délkou fráze. Metoda také negeneralizuje svou funkci na neznámé fráze jako jiné metody.
 
-\subsubsection{Agregace embeddingů slov}
+\subsubsection*{Agregace embeddingů slov}
 Velice intuitivní metoda pro získání embeddingu delšího textu je agregace embeddingů jednotlivých slov. Provedením vektorové operace získáme opět vektor v tom samém embeddingovém prostoru. Nabízí se například sčítání či průměrování vektorů,  ale existují i o něco složitější řešení obsahující další kroky či vrstvy. Například v práci Kentera\cite{kenter2016} návrhli jednoduchou neuronovou síť nad průměrovanými slovními embeddingy, čímž predikuje okolní věty. Palachy uvádí ve svém článku\cite{palachy2019} další příklady.
 
-\subsubsection{doc2vec}
+\subsubsection*{doc2vec}
 Model, zvaný jako „paragraph vectors“\cite{le2014}, je zřejmě první pokus zobecnění použití modelu word2vec na sekvence slov. Metoda je založená na rozšíření standardního modelu o paměťový vektor, který cílí na zachycení téma/kontextu ze vstupu. Každý odstavec je mapovaný na unikátní vektor (tzv. paragraph vector) podobně jako slova ze slovníku. Tento vektor je sdílený mezi všemi kontexty okna plovoucího přes odstavec. Pro predikované slovo se paměťový vektor přidává ke kontextu fixní velikosti. Vektory pro neznámé odstavce jsou náhodně inicializované. Paragraph vector je zobrazen na schéma \ref{fig:palachy2019PV}.
 \begin{figure}\centering
 	\includegraphics[width=0.8\textwidth]{images/palachy2019/palachy2019_PV.png}
 	\caption{Sdílená paměť modelu paragraph vector\cite{palachy2019}}\label{fig:palachy2019PV}
 \end{figure}
 
-\subsubsection{GloVe}
+\subsubsection*{sent2vec}
+Představený model sent2vec v Pagliardiniho\cite{pagliardini2018} práci dále kombinuje předešlé přístupy. Autoři rozšiřují CBOW algoritmus modelu word2vec o schopnost zpracování celých vět. Pro predikci slova ve větě je místo kontextového okna o fixní velikosti použito jako kontext celý zbytek věty. Vektory slov z kontextu jsou opět průměrované jako vstup do neuronové sítě. Schéma modelu je zobrazeno na obrázku \ref{fig:palachy2019sent2vec}.
+\begin{figure}\centering
+	\includegraphics[width=\textwidth]{images/palachy2019/palachy2019_sent2vec.png}
+	\caption{Schéma modelu sent2vec s příkladem\cite{palachy2019}}\label{fig:palachy2019sent2vec}
+\end{figure}
+
+\subsubsection*{GloVe}
 V práci Penningtona\cite{pennington2014} přichází s odlišnou myšlenkou získávání informace pro embedding slov, kterou předznamenává jeho název odvozený z anglického „Global Vectors“. Zatímco word2vec model je zaměřen pouze na lokální informaci v textu (slova z okolí), GloVe vedle lokální zachycuje i globální statistiky korpusu. Ve výpočtech k tomu zahrnuje matici společných výskytů slov (z angl. co-occurrence matrix). Autorům se tak podařilo vytvořit další model, který předčil ostatní modely v úlohách rozpoznávání pojmenovaných entit, podobnosti či analogie slov.
 
 Ve článku Ganegedara\cite{genegedara2019} je GloVe popsán dopodrobna.
 
-\subsubsection{Skip-thought vektory}
+\subsubsection*{Skip-thought vektory}
 Další pokus o zobecnění skip-gram architektury word2vec modelu rozšiřuje původní koncept ve smyslu použití celé věty jako základní jednotky pro predikci. Skip-thought přístup predikuje předcházející a následující větu. Autoři používají rekurentní neuronové sítě pro enkodér a dekodér, které využívají embedovací vrstvu provádějící embedding jednotlivých slov. Více je vysvětleno na obrázku \ref{fig:palachy2019ST}.
 \begin{figure}\centering
 	\includegraphics[width=\textwidth]{images/palachy2019/palachy2019_skip-thought.png}
@@ -564,24 +580,17 @@ Další pokus o zobecnění skip-gram architektury word2vec modelu rozšiřuje p
 	\label{fig:palachy2019ST}
 \end{figure}
 
-\subsubsection{FastSent}
-Hill ve své práci\cite{hill2016} navrhl zjednodušené řešení skip-thought modelu, kde místo enkodéru a dvou dekodérů se používá klasický BOW. Díky tomu je dosaženo značného snížení výpočetní náročnosti.
-
-\subsubsection{sent2vec}
-Představený model sent2vec v Pagliardiniho\cite{pagliardini2018} práci dále kombinuje předešlé přístupy. Autoři rozšiřují CBOW algoritmus modelu word2vec o schopnost zpracování celých vět. Pro predikci slova ve větě je místo kontextového okna o fixní velikosti použito jako kontext celý zbytek věty. Vektory slov z kontextu jsou opět průměrované jako vstup do neuronové sítě. Schéma modelu je zobrazeno na obrázku \ref{fig:palachy2019sent2vec}.
-\begin{figure}\centering
-	\includegraphics[width=\textwidth]{images/palachy2019/palachy2019_sent2vec.png}
-	\caption{Schéma modelu sent2vec s příkladem\cite{palachy2019}}\label{fig:palachy2019sent2vec}
-\end{figure}
-
-\subsubsection{Quick-thought vektory}
+\subsubsection*{Quick-thought vektory}
 Skupina pod vedením Logenswarana\cite{logenswaran2018} navrhla přeformulováním úlohy embeddingu dokumentů zcela nový přístup. Kontext, ve kterém se věta vyskytuje, začali predikovat metodou učením s učitelem. Viz. obrázek \ref{fig:palachy2019QT}.
 \begin{figure}\centering
-	\includegraphics[width=\textwidth]{images/palachy2019/palachy2019_QT.png}
-	\caption{Schéma modelu Quick-thought (b) oproti Skip-thought (a) \cite{palachy2019}}\label{fig:palachy2019QT}
+	\includegraphics[width=0.9\textwidth]{images/palachy2019/palachy2019_QT.png}
+	\caption{Schéma modelu quick-thought (b) oproti skip-thought (a) \cite{palachy2019}}\label{fig:palachy2019QT}
 \end{figure}
 
-\subsubsection{Word Mover's Embedding}
+% \subsubsection{FastSent}
+% Hill ve své práci\cite{hill2016} navrhl zjednodušené řešení skip-thought modelu, kde místo enkodéru a dvou dekodérů se používá klasický BOW. Díky tomu je dosaženo značného snížení výpočetní náročnosti.
+
+\subsubsection*{Word Mover's Embedding}
 Metoda je založená na „Word Mover’s Distance“\cite{kusner2015} -- metrice pro podobnost mezi dvěma dokumenty definováná jako minimální vzdálenost, kterou potřebují embedovaná slova jednoho dokumentu urazit ve vektorovém prostoru k dosažení embedovaných slov druhého dokumentu. K těmto účelům bylo navrženo D2KE (z angl. distances to kernel and embeddings)\cite{wu2018}, jako metodologii pro odvození kernelu z dané vzdálenostní funkce. Na obrázku \ref{fig:palachy2019WME} je zobrazeno odvození takového kernelu.
 \begin{figure}\centering
 	\includegraphics[width=\textwidth]{images/palachy2019/palachy2019_WME.png}
@@ -590,12 +599,7 @@ Metoda je založená na „Word Mover’s Distance“\cite{kusner2015} -- metric
 
 Více do detailu Palachy popisuje ve článku\cite{palachy2019}.
 
-\subsubsection{ELMo}
-V práci Peters a spol\cite{peters2018} přichází s myšlenkou hluboce „kontextualizovaných“ slovních embeddingů. Místo přiřazování fixních embeddingů každému slovu, ELMo (z anlg. Embeddings from Language Model) používá oboustrannou LSTM (z angl. bi-directional long short-term memory) síť ke zpracování celé věty, čímž vytváří embedding pro slova na základě kontextu z obou stran. Vnitřní reprezentace slov je založená na jednotlivých znacích, čímž se model stává robustnějším pro slova mimo slovník použitý při trénování.
-
-Jay Alammar ve svém článku\cite{alammar2018} přehledně prezentuje celý proces ELMo embeddingu.
-
-\subsubsection{ULMFiT}
+\subsubsection*{ULMFiT}
 Zde se nejedná přímo o metodu embeddingu, jako spíš o inovativní přístup k řešení úloh zpracování přirozeného jazyka. ULMFiT (z angl. Universal Language Model Fine-tuning)\cite{hovard2018} přichází jako první s aplikací metody tzv. „transfer-learningu“ v NLP. Metoda spočívá ve třech krocích:
 \begin{enumerate}
     \item Základní před-trénování jazykového modelu (například na textu z Wikipedie).
@@ -604,7 +608,12 @@ Zde se nejedná přímo o metodu embeddingu, jako spíš o inovativní přístup
 \end{enumerate}
 Podle článku\cite{ghelani2019}, tímto způsobem použitá síť výrazně překonala dosavadní state-of-the-art řešení na několika úlohách klasifikace textu.
 
-\subsubsection{Transformers}
+\subsubsection*{ELMo}
+V práci Peters a spol\cite{peters2018} přichází s myšlenkou hluboce „kontextualizovaných“ slovních embeddingů. Místo přiřazování fixních embeddingů každému slovu, ELMo (z anlg. Embeddings from Language Model) používá oboustrannou LSTM (z angl. bi-directional long short-term memory) síť ke zpracování celé věty, čímž vytváří embedding pro slova na základě kontextu z obou stran. Vnitřní reprezentace slov je založená na jednotlivých znacích, čímž se model stává robustnějším pro slova mimo slovník použitý při trénování.
+
+Alammar\cite{alammar2018} přehledně prezentuje celý proces ELMo embeddingu.
+
+\subsubsection*{Transformers}
 Práce „Attention Is All You Need“\cite{vaswani2017} odstartovala novou éru v oboru zpracování přirozeného jazyka. Vznikla rodina modelů typu tzv. Transformer, který se vyhýbá konvolučnímu i rekurentnímu přístupu ke zpracování sekvence a místo toho používá inovativní přístup zvaný „attention“. Stále však uchovávají architekturu enkodér (čtení vstupu) -- dekodér (provádění predikce).
 
 Tyto modely generují kontextové embeddingy obsahující informaci o sousedních slovech, přestože jejich cílem není tvořit bohatý embedovací prostor pro vstupní text.
@@ -614,7 +623,7 @@ Tyto modely generují kontextové embeddingy obsahující informaci o sousedníc
 	\caption{Ilustrace enkodér-dekodér architektury Transformer\cite{palachy2019}}\label{fig:alammar2018transformer}
 \end{figure}
 
-\subsubsection{USE}
+\subsubsection*{USE}
 „Universal Sentence Encoder“\cite{cer2018} přichází s unikátní myšlenkou učení enkodéru pro získání embeddingů vět. USE je založený na skip-thought modelu, avšak místo obou částí enkodér--dekodér architektury je použito pouze architektury se sdíleným enkodérem, který je paralelně učený na různých úlohách. Tím autoři cílí na vytvoření jednoho univerzálního enkodéru, schopného plnit roli embedování vět v různých aplikacích jako je klasifikace, klastrování či podobnost textu.
 
 Autoři USE přichází se dvěma možnostmi řešení enkodéru. První používá tzv. hluboce průměrovanou síť (z angl. deep averaging network), zatímco druhá se opírá o složitější strukturu transformeru\cite{yang2018}.
@@ -624,7 +633,7 @@ Autoři USE přichází se dvěma možnostmi řešení enkodéru. První použí
 	\caption{Architektura paraleního učení modelu USE se sdíleným enkodérem\cite{yang2018}}\label{fig:yang2018USE}
 \end{figure}
 
-\subsubsection{GPT}
+\subsubsection*{GPT}
 Jako jednou z prvních adaptací Transformer architektury je GPT (z angl. Generative Pre-Training Transformer)\cite{radford2018}. Oproti základní architektuře používá však jinou strukturu. GPT se skládá pouze z na sebe napojených bloků dekodéru. Vyškálováním modelu autoři později dosáhli lepšího modelu, pojmenovaného jako GPT-2\cite{radford2019}.
 
 Ve svém článku\cite{liang2019} Liang uvádí, že GPT se řadí mezi tzv. autoregresivní jazykové modely, které používají kontextových slov k predikci slova následujícího. Přístup autoregresivních jazykových modelů je ovšem omezující na dva směry, buď dopředný, nebo zpětný, jako je zobrazeno na obrázku \ref{fig:liang2019GPT}.
@@ -633,7 +642,8 @@ Ve svém článku\cite{liang2019} Liang uvádí, že GPT se řadí mezi tzv. aut
 	\caption{Směrově orientované predikce autoregresivního jazykového modelu\cite{liang2019}}\label{fig:liang2019GPT}
 \end{figure}
 
-\subsubsection{BERT}
+\newpage
+\subsubsection*{BERT}
 Dalším z úspěšných modelů Transformer rodiny je BERT (z angl. Bidirectional Encoder Representations from Transformers)\cite{devlin2018}, který způsobil rozruch v komunitě, kvůli dosažení state-of-the-art výsledků v mnoha různých úlohách zpracování přirozeného jazyka, říká Horev\cite{horev2018}.
 
 BERT je navržený pro modelování jazyka a jeho následné jednoduché ladění. Díky tomu potřebuje oproti klasickému Transformer modelu pouze mechanizmus enkodéru.
@@ -643,35 +653,38 @@ Autoři modelu přišli na nový způsob řešení predikce slova na základě k
 	\includegraphics[width=0.8\textwidth]{images/liang2019/liang2019_BERT.png}
 	\caption{Obousměrně orientovaný autoenkodér\cite{liang2019}}\label{fig:liang2019BERT}
 \end{figure}
+Této inovace BERT využívá pro komplexnější využití kontextové informace.
 
-Této inovace BERT využívá pro komplexnější využití kontextové informace. Narozdíl od autoregresivních modelů tak enkodér modelu BERT může číst celou sekvenci slov najednou. Konkrétně tedy nejde o dvousměrné čtení, přestože je jeho název modelu tak usouzený. To je zobrazené na obrázku \ref{fig:alammar2018BERT}.
+Narozdíl od autoregresivních modelů enkodér modelu BERT může číst celou sekvenci slov najednou, přestože název modelu je odvozen od dvousměrného čtení, jak je zobrazeno na obrázku \ref{fig:alammar2018BERT}.
 
-Mnohem více do detailu o architektuře Transformer a BERT popisuje Jay Alammar ve svých ilustrovaných článcích\cite{alammar2018}\cite{alammar2018b}.
+% Mnohem více do detailu o architektuře Transformer a BERT popisuje Jay Alammar ve svých ilustrovaných článcích\cite{alammar2018}\cite{alammar2018b}.
+Mnohem více do detailu je popsáno v ilustrovaných článcích\cite{alammar2018}\cite{alammar2018b}.
 \begin{figure}\centering
 	\includegraphics[width=0.8\textwidth]{images/alammar2018_BERT.png}
 	\caption{Ilustrace architektury modelu BERT\cite{alammar2018}}\label{fig:alammar2018BERT}
 \end{figure}
 
-\subsubsection{Sentence-BERT}
+\subsubsection*{Sentence-BERT}
 Jak je vidět na obrázku \ref{fig:alammar2018BERT}, BERT doplňuje sekvenci tokenů o speciální token [CLS], kde jeho výstup lze používat pro klasifikační úlohy. Autoři modelu Sentence-BERT však ukazují\cite{reimers2019}, že poskytuje pouze slabý embedding pro jiné než klasifikační úlohy. Navrhli proto architekturu využívající BERT jako základ pro tzv. „siamese“ a „triplet“(zachycené na obrázku  \ref{fig:palachy2019SBERT}) síťovou strukturu, kterou by bylo možné zachycovat sémanticky smysluplné embeddingy vět. Tím se jim podařilo překonat dosavadní state-of-the-art metody pro embedding vět.
 \begin{figure}\centering
 	\includegraphics[width=\textwidth]{images/palachy2019/palachy2019_SBERT.png}
 	\caption{Architektura SBERT pro trénování klasifikátoru a počítání kosinové podobnosti\cite{palachy2019}}\label{fig:palachy2019SBERT}
 \end{figure}
 
-\subsubsection{XLNet}
+\subsubsection*{XLNet}
 XLNet\cite{yang2019} je model odvozený od modelu Transformer-XL\cite{dai2019}, který vznikl jako rozšíření klasického transformeru ve smyslu zrušení omezení vstupu fixní délky. Jak Liang vysvětluje ve svém článku\cite{liang2019}, princip autoenkodéru v modelu BERT přinesl i svá omezení. Proto autoři modelu XLNet navrhli tzv. permutační modelování jazyku (z angl. permutation language modeling). To umožňuje modelu využít kontextu z obou stran, přestože zůstává být autoregresivní, jak je naznačeno na obrázku \ref{fig:palachy2019SBERT}. Tyto inovace se opět projevily pozitivně na vlastnosti modelu, díky čemu zaujal state-of-the-art výsledky pro mnoho NLP úloh.
 \begin{figure}\centering
 	\includegraphics[width=0.5\textwidth]{images/liang2019/liang2019_XLNet.png}
 	\caption{Permutační modelování jazyka\cite{liang2019}}\label{fig:liang2019XLNet}
 \end{figure}
 
-\subsubsection{Další}
+\subsubsection*{Další}
 Vývoj jazykových modelů je stále v rozmachu a tak skoro každý měsíc vychází publikace s nějakým novým objevem. V mé práci nemůžu ani zdaleka obsáhnout vše zajímavé, nicméně jeden z velice vyčerpávajících a aktuálních přehledů je například ve článku\cite{suryavansh2020} od Manua Suryavanshe.
 
-\subsection{Metody učení s učitelem}
+\subsubsection{Metody učení s učitelem}
 Palachy ve svém článku\cite{palachy2019} dále uvádí několik přístupů řešení embeddingu pomocí metod učení s učitelem. Pro účely mé práce tyto metody však nejsou důležité, proto je konkrétně nezmiňuji.
 
+\newpage
 \subsection{Výběr metody a technologie}
 Pro výběr vhodného modelu pro aplikaci při vyhodnocování podobnosti textů stanovuji tato kritéria. Vzhledem k doméně mé práce -- české veřejné zakázky -- potřebuji, aby byl model schopný pracovat s českým jazykem. Zároveň však nedisponuji prostředky k učení modelu na českém korpusu od nuly, tedy potřebuji najít před-trénovaný model podporující češtinu. Kandidátní modely poté experimentálně vyhodnocuji k finálnímu výběru toho nejvhodnějšího.
 
@@ -693,7 +706,8 @@ Oproti tomu, model ELMo je vydaný s širokou podporou mnoha jazyků pod repozit
 
 Dalším široce rozšířeným modelem je fastText, který nabízí různé před-trénované modely pro až 157 jazyků. Všechny modely včetně českého jsou dostupné na webu \textit{fasttext.cc}\footnote{FastText web - https://fasttext.cc/docs/en/crawl-vectors.html}
 
-Ostatní modely jako GPT, Sent2vec, FastSent či GloVe před-trénované modely buď vůbec nemají, nebo mají jen pro anglický jazyk. Jedině pro model GloVe existuje vícejazyčné rozšíření (dostupné na webu \textit{GloVe}\footnote{GloVe web - http://www.cs.cmu.edu/~afm/projects/multilingual\_embeddings.html}), které ovšem podporu češtiny také neposkytuje.
+% Ostatní modely jako GPT, Sent2vec, FastSent či GloVe před-trénované modely buď vůbec nemají, nebo mají jen pro anglický jazyk. Jedině pro model GloVe existuje vícejazyčné rozšíření (dostupné na webu \textit{GloVe}\footnote{GloVe web - http://www.cs.cmu.edu/~afm/projects/multilingual\_embeddings.html}), které ovšem podporu češtiny také neposkytuje.
+Ostatní modely jako GPT, Sent2vec či GloVe před-trénované modely buď vůbec nemají, nebo mají jen pro anglický jazyk. Jedině pro model GloVe existuje vícejazyčné rozšíření (dostupné na webu \textit{GloVe}\footnote{GloVe web - http://www.cs.cmu.edu/~afm/projects/multilingual\_embeddings.html}), které ovšem podporu češtiny také neposkytuje.
 
 \subsection{Vyhodnocení modelů}
 \label{sec:model_evaluation}
@@ -860,6 +874,7 @@ Implementace komponenty je adaptovaná pro příjem kolekce tokenů, kdy vrací 
 
 Pro inicializaci vyžaduje předání binárního \textit{fasttext} modelu, nebo alespoň systémové cesty k němu.
 
+\newpage
 \section{Extrakce předmětu}
 \label{sec:subjextraction}
 
@@ -900,9 +915,12 @@ Celý proces je schématicky znázorněn na obrázku \ref{fig:subjextraction}.
 \subsection{Extrakce textu z dokumentů}
 Jak napovídá schéma \ref{fig:subjextraction}, na vstupu procesu extrakce textu je veškerá dostupná dokumentace k VZ v podobě tzv. \uv{formátovaného} textu (z angl. rich-text). Na výstupu se poté očekává souvislý \uv{prostý} text (z angl. plain-text).
 
-V dokumentaci VZ se standarně vyskytují předsmluvní dokumenty, přílohy (projektové dokumentace, specifikace), smlouvy a mnoho dalšího. Z většiny se jedná o textové dokumenty ve formátu \textit{.pdf} či \textit{.doc/.odt}, ale vyskytují se i další od tabulek (\textit{.xls}), přes obrázky (\textit{.jpg}) až po komplexní archivy (\textit{.zip}) nebo certifikáty (\textit{.cer}). Ze všech těchto formátů potřebuji extrahovat prostý text.
+V dokumentaci VZ se standarně vyskytují předsmluvní dokumenty, přílohy (projektové dokumentace, specifikace), smlouvy a mnoho dalšího. Z většiny se jedná o textové dokumenty ve formátu \textit{.pdf} či \textit{.doc/.odt}, ale vyskytují se i~další od tabulek (\textit{.xls}), přes obrázky (\textit{.jpg}) až po komplexní archivy (\textit{.zip}) nebo certifikáty (\textit{.cer}). Ze všech těchto formátů potřebuji extrahovat prostý text.
 
-K tomu využívám nástroje projektu \textit{public-contracts}, který je jako open-source dostupný v repozitáři \textit{opendatalabcz/public-contracts}\footnote{opendatalabcz/public-contracts repozitář - https://github.com/opendatalabcz/public-contracts}, vyvýjeného v rámci laboratoře otevřených dat \textit{OpenDataLab}\footnote{OpenDataLab web - https://opendatalab.cz/}, který používá pro extrakci textu nástroje \textit{Apache Tika} s OCR technologií \textit{Tesseract}.
+K tomu využívám nástroje projektu \textit{public-contracts}, který je jako open-source dostupný v repozitáři \textit{opendatalabcz/public-contracts}\footnote{opendatalabcz/public-contracts repozitář\newline --
+dostupný z https://github.com/opendatalabcz/public-contracts},
+vyvíjeného v rámci laboratoře otevřených dat
+\textit{OpenDataLab}\footnote{OpenDataLab web -- dostupný z https://opendatalab.cz/}, který používá pro extrakci textu nástroje \textit{Apache Tika} s OCR technologií \textit{Tesseract}.
 
 Samotný projekt \textit{public-contracts} řeší vyhledávání českých VZ, stejně jako stahování jejich dokumentace, extrakci textu z nich a následné uložení do databáze. Implementován je v jazyku Java a pro ukládání vyextrahovaných textů používá databázi Postgres.
 
@@ -939,7 +957,10 @@ Určení počátku kontextu vypočítávám ve čtyřech krocích:
     Předmět  & 1\\
     Popis & 1\\\hline
     \end{tabular}
-    \caption{Klíčová slova a jejich ohodnocení}
+    \caption[Klíčová slova a jejich ohodnocení]{Klíčová slova a jejich ohodnocení
+    % TODO
+    % (jednotlivá ohodnocení jsou usouzená odhadem jejich významnosti na základě testovací množiny dat).
+    }
     \label{table:example_subj_keywords}
     \end{table}
 
@@ -952,6 +973,7 @@ Určení počátku kontextu vypočítávám ve čtyřech krocích:
     Těchto charakteristik se snažím využít v podobě multiplikativního koeficientu na body klíčového slova. Pro každý výskyt tak detekuji jednotlivé charakteristiky a při pozitivní detekci patřičně upravuji koeficient, který je základě rovný jedné.
     
     Charakteristiky, které detekuji jsou zaznamenány v tabulce \ref{table:example_local_characteristics}.
+% dovysvetlit hodnoty
     \begin{table}
     \centering
     \begin{tabular}{ |c|l|c| }
@@ -969,7 +991,7 @@ Určení počátku kontextu vypočítávám ve čtyřech krocích:
     CH9 & Blízký výskyt jména \uv{Zboží} za výskytem\footnotemark & -1\\
     CH10 & Běžná věta za výskytem\footnotemark & + poměr malých písmen\\\hline
     \end{tabular}
-    \caption{Detekované charakteristiky a jejich dopad na multiplikativní koeficient ohodnocení klíčových slov}
+    \caption[Detekované charakteristiky a jejich dopad na multiplikativní koeficient ohodnocení klíčových slov]{Detekované charakteristiky a jejich dopad na multiplikativní koeficient ohodnocení klíčových slov (jednotlivé úpravy koeficientu jsou odvozené odhadem na základě jejich projevu na testovací množině dat).}
     \label{table:example_local_characteristics}
     \end{table}
     \footnotetext[22]{Sloveso \uv{je} se často vyskytuje v první větě kapitoly předmětu}
@@ -1324,6 +1346,7 @@ V předešlých kapitolách jsem narážel na fakt, že přestože je většina 
 
 Položky předmětu bývají často v dokumentaci vyjmenované v seznamech strukturovaných odrážkami či odřádkováními. Takové seznamy se snažím pomocí následujících extraktorů detekovat a extrahovat. Kromě seznamů se dále zaměřuji na název zakázky, který často sám o sobě nese předmětnou informaci. Výstupem tohoto procesu tak je výčet konkrétních předmětných položek a názvů.
 
+\newpage
 Extraktory sloužících k účelům tohoto procesu jsou následující:
 \begin{enumerate}
     \item Výčet položek podle struktury odřádkování
@@ -1383,8 +1406,10 @@ Při extrakci textu se výčty položek obvykle převedou na jednotlivé položk
 
 V dokumentacích se může vyskytovat více formátů výčtů položek. Klasicky se používají speciální znaky jako pomlčky a tečky, avšak existují i formáty, kde se speciálních znaků nevyužívá a seznam je členěn například jen alfanumerickými identifikátory.
 
-Tento extraktor má za cíl podchytit všechny takové případy. Implementuji proto následující algoritmus, který detekuje znaky potenciálně tvořící výčtovou strukturu a na jejich základě extrahuje výčet položek:
+Tento extraktor má za cíl podchytit všechny takové případy. Implementuji proto následující algoritmus, který detekuje znaky potenciálně tvořící výčtovou strukturu a na jejich základě extrahuje výčet položek.
 
+\newpage
+Kroky algoritmu detekce výčtové struktury jsou následující:
 \begin{enumerate}
     \item Nalezení nejčastěji se vyskytujících počátečních dvojic znaků (nepočítaje bílé znaky). Různých dvojic označujících výčet může být více, vybírám proto dvojice, které mají alespoň minimální počet výskytů daný nastavením (defaltně 4 výskyty). Vzhledem k doméně dat, některé dvojice znaků se mohou obecně často vyskytovat na začátku vět, proto specifikuji seznam zakázaných dvojic.
     \item Pro každou vybranou dvojici extrahuji výčet obdobně jako u extraktoru výčtu položek podle struktury odřádkování (viz. kapitola \ref{sec:structure_item_enumeration_extractor}) s~modifikací:
@@ -1464,7 +1489,6 @@ Na obrázku \ref{fig:udscheme} je ukázka anotačního schéma UD pro několik r
     \item prázdný řádek, označující hranice vět,
     \item komentář, začínající znakem \#.
 \end{enumerate}
-\newpage
 
 Věty tvoří alespoň jedna řádka s tokenem, který obsahuje následující pole:
 \begin{enumerate}
@@ -1519,7 +1543,6 @@ je odlehčená knihovna pro jazyk Python umožňující základní operace s CoN
 \label{sec:subj_conllu_extraction}
 
 Aktuální technologický trend vývoje NLP aplikací je u UD. Pro účely extrakce předmětných položek podle větného rozkladu vybírám model \textit{czech-pdt-ud-2.5-191206}\cite{UD_Czech-PDT}, který používám v nástroji \textit{UDPipe} pro anotaci textu a takto anotovaný text následně procesuji za použití \textit{Udapi}.
-\newpage
 
 Proces extrakce podle větného rozkladu tak spočívá ve třech krocích:
 \begin{enumerate}
@@ -1684,6 +1707,7 @@ V doméně veřejných zakázek se můžeme ptát na otázku: jaké zakázky jso
 
 Zatímco podobnost lokality zadavatele lze intuitivně řešit přímo jako inverzní funkce geografické vzdálenosti dvou bodů (např. podle sídla zadavatele), předmět podnikání zadavatele a samotný předmět plnění zakázky již takto přímo měřit nelze. Podobnost předmětu zakázek by mohla jít řešit na základě CPV kódů, avšak jen do omezeného rozsahu jejich hierarchické struktury. Pro obecné řešení se tak nabízí řešení podobnosti předmětu specifikovaného v textu dokumentace zakázek.
 
+\newpage
 \section{Metrika podobnosti textu}
 \label{sec:text_sim_metrics}
 
@@ -1695,8 +1719,7 @@ Existuje mnoho algoritmů pro porovnávání textových řetězců. Podle zákla
     Metoda spočívá v počítání operací nutných pro transformaci jednoho řetězce na druhý. Čím více je potřeba operací, tím méně jsou si řetězce podobné.
     
     Příkladem jsou algoritmy Hammingovy či Levenshteinovy vzdálenosti.
-    \newpage
-    
+
     \item množinových operacích
     
     Algoritmy této kategorie dělí řetězce na množiny tokenů a hledají se podobné tokeny z obou množin. Čím více podobných tokenů množiny mají, tím jsou si samotné řetězce více podobné.
@@ -1720,9 +1743,8 @@ V případě, kdy je potřeba řešit významová (sémantická) podobnost text�
 
 Pro měření vzdálenosti dokumentů převedených do vektorového prostoru je vhodná kosinová vzdálenost, jak popisuje do detailu ve svém článku\cite{emmery2017} Emmery. Oproti euklidovské vzdálenosti kosinová vzdálenost potlačuje odchylky způsobené absolutní délkou textů.
 
+\newpage
 \section{Komponenty pro vyhodnocování podobnosti}
-
-Pro použití v systému implementuji následující komponenty.
 
 \subsection{Výpočet Jaccard indexu}
 \label{sec:component_jaccard_index}
@@ -1738,7 +1760,7 @@ Sim(d) := min(1, \frac{1}{log1p(d)})
 \end{equation}
 Tato standardizace má za důsledek, že vzdálenosti do 1,7 kilometru dávají podobnost 1, což zhruba odpovídá logické podobnosti na úrovni stejné obce, jako je znázorněno v diagramu \ref{fig:log1pstandardization}.
 \begin{figure}\centering
-	\includegraphics[width=\textwidth]{images/log1p_standardization.png}
+	\includegraphics[width=0.9\textwidth]{images/log1p_standardization.png}
 	\caption{Ukázka průběhu geografické podobnosti \ref{eq:log1p_standardization}}\label{fig:log1pstandardization}
 \end{figure}
 
@@ -1747,7 +1769,10 @@ Komponenta přijímá na vstupu tvz. \uv{\textit{pandas}\footnote{pandas - Pytho
 \subsection{Výpočet kosinové podobnosti}
 \label{sec:component_cosine_similarity}
 
-Komponenta, obdobně jako předchozí, počítá vzdálenost mezi cílovým a referenčním bodem (vektorem) a následně odvozuje jejich \uv{podobnost}. Pro výpočet (kosinové) vzdálenosti vektorů podle definice \ref{eq:cosine_distance} implementuji komponentu založenou na maticových operacích pomocí nástrojů knihovny \textit{numpy}. Komponenta  přijímá dvě kolekce vektorů a vrací kosinovou vzdálenost všech párů vektorů mezi těmito dvěma kolekcemi. Komponenta vrací vzdálenost v intervalu \interval[{0,2}], kterou převádím na podobnost standardizací danou předpisem \ref{eq:cosine_standardization}, kde \textit{d} je vypočítaná vzdálenost.
+Komponenta, obdobně jako předchozí, počítá vzdálenost mezi cílovým a referenčním bodem (vektorem) a následně odvozuje jejich \uv{podobnost}.
+Pro výpočet (kosinové) vzdálenosti vektorů podle definice \ref{eq:cosine_distance} implementuji komponentu založenou na maticových operacích pomocí nástrojů knihovny \textit{numpy}.
+Komponenta  přijímá dvě kolekce vektorů a vrací kosinovou vzdálenost všech párů vektorů mezi těmito dvěma kolekcemi.
+Komponenta vrací vzdálenost v intervalu \interval[0,2], kterou převádím na podobnost standardizací danou předpisem \ref{eq:cosine_standardization}, kde \textit{d} je vypočítaná vzdálenost.
 
 \begin{equation} \label{eq:cosine_distance}
 CosDist(\mathbf{A}, \mathbf{B}) := 1 - \frac{\mathbf{A} \cdot \mathbf{B}}{\| \mathbf{A}\|*\| \mathbf{B}\|}
@@ -1813,11 +1838,13 @@ Knihovna & Funkce & Čas [s] \\\hline
 
 \chapter{Doporučovací systém}
 
-V dnešní době je na internetu nepřeberné množství informací, zdrojů, věcí a mnoho dalšího. K efektivnímu využití takového obsahu je zapotřebí systémů, které uživateli budou schopny data třídit do rozumně rozsáhlé množiny relevantních položek. Takové systémy se nazývají \uv{doporučovací} a vyskytují se v podstatě ve všech populárních on-line platformách jako jsou Youtube, Amazon, Netflix, Facebook a mnoho dalších.
+V dnešní době je na internetu nepřeberné množství informací, zdrojů, věcí a~mnoho dalšího. K efektivnímu využití takového obsahu je zapotřebí systémů, které uživateli budou schopny data třídit do rozumně rozsáhlé množiny relevantních položek. Takové systémy se nazývají \uv{doporučovací} a vyskytují se v~podstatě ve všech populárních on-line platformách jako jsou Youtube, Amazon, Netflix, Facebook a mnoho dalších.
 
 Jak shrnuje ve svém článku\cite{rocca2019} autor, ke stavbě doporučovacích systémů se používají dvě základní paradigma: tzv. \uv{kolaborativní filtrování} (dále angl. collaborative filtering) a \uv{obsahově založené} metody (dále angl. content-based).
 
-\section{Collaborative filtering}
+\newpage
+\section{Paradigma doporučovacích systémů}
+\subsection{Collaborative filtering}
 
 Metody kolaborativního filtrování jsou založené výhradně na předešlých interakcích uživatele s položkami systému. Interakce systém zaznamenává do tzv. \uv{uživatel--položka matice}(z angl. user--item matrix), na základě které systém zároveň detekuje podobné uživatele či položky.
 
@@ -1837,7 +1864,7 @@ Výhoda kolaborativního filtrování je, že neklade žádné nároky na vstupn
 
 Tato vlastnost ovšem přináší i jejich hlavní problém tzv. \uv{chladného startu} (z angl. cold start problem), který představuje situaci, že novému uživateli nelze nic doporučovat, stejně jako nelze doporučovat právě přidané položky. Existují různá řešení tohoto problému, mezi která patří například i použití nekolaborativní metody.
 
-\section{Content based}
+\subsection{Content based}
 \label{sec:contentbased}
 
 Jak napovídá název, metody tohoto typu jsou založené na obsahu, respektive vlastností obou uživatelů i položek, na základě kterých se staví model. Podle toho, které vlastnosti se využívají dělíme dva přístupy:
@@ -1854,7 +1881,8 @@ Jak napovídá název, metody tohoto typu jsou založené na obsahu, respektive 
 
 Metody obou přístupů lze zkombinovat tak, že se pro sestavení modelu využívají vlastnosti obou entit.
 
-\section{Vyhodnocování doporučovacích systémů}
+\subsection{Vyhodnocování doporučovacích systémů}
+\label{sec:recommender_evaluation}
 
 Vyhodnocování doporučovacích systémů je poněkud složité, přestože lze do určité míry použít standardní metody vyhodnocování algoritmů strojového učení. V případě, že je doporučovací model učený na množině zaznamenaných interakcí, lze použít klasických metrik chybovosti či přesnosti pro jeho automatické vyhodnocování.
 
@@ -1968,32 +1996,53 @@ Skládání dotazu a datasetu v tom případě probíhá najednou složením dan
 
 Navíc je zde akorát poslední krok -- agregace vlastností. Tento krok se provádí na úrovni jednotlivých zakázek tak, že se z výsledků podobnosti jednotlivých vlastností počítá vážený průměr.
 
+Pro zajištění určité míry explorace doporučování implementuji komponentě možnost aplikace náhodného šumu na výslednou podobnost.
+
+\subsection{Vyhodnocení}
+
+V kapitole \ref{sec:recommender_evaluation} pojednávám o možnostech vyhodnocování doporučovacích systémů. V rámci této práce ovšem nejsem schopný zmiňovanými způsoby navržený systém vyhodnocovat hned ze dvou důvodů.
+
+Zaprvé nemám k dispozici dataset záznamů uživatelských interakcí, na základě kterého by mohl být systém laděn a automaticky vyhodnocován.
+
+Zadruhé systém není v době řešení této práce v produkčním provozu, kdy by bylo možné za běhu zaznamenávat uživatelské chování a na základě toho dále systém vyhodnocovat.
+
+Funkčnost navrženého systému je ovšem převážně algoritmická a neobsahuje části vykazující skryté chování, které by bylo nutné automaticky ladit či vyhodnocovat pro jeho základní funkčnost.
+
 
 \chapter{Aplikace}
 
-Doporučovací systémy se tradičně uplatňují v prostředích s vysokým počtem přistupujících uživatelů. Příkladem jsou populární online platformy jako je Youtube, Netflix, Facebook, Spotify a jiné. Pro demonstraci systému realizovaného v mé práci tak vytvářím webovou aplikaci, která poskytuje uživatelské rozhraní k jeho použití. V této kapitole stručně shrnuji vlastnosti a možnosti tohoto rozhraní, které podchycují funkčnost celého systému.
+Doporučovací systémy se tradičně uplatňují v prostředích s vysokým počtem přistupujících uživatelů. Příkladem jsou populární online platformy jako je Youtube, Netflix, Facebook, Spotify a jiné. Pro demonstraci systému realizovaného v mé práci tak vytvářím webovou aplikaci, která poskytuje uživatelské rozhraní k jeho použití. V této kapitole stručně shrnuji vlastnosti a možnosti tohoto rozhraní, které podchycují funkčnost celého systému. Pro ukázku dále uvádím konkrétní případ užití s ilustrovaným popisem funkčnosti.
+\newpage
 
 \section{Funkce}
 
-Aplikace disponuje dvěma základními funkcemi:
+Aplikace umožňuje uživateli využít systém ve dvou různých módech:
+\begin{enumerate}
+    \item anonymní mód -- omezený mód, který lze použít bez nutnosti přihlášení,
+    \item privilegovaný mód -- rozšířený mód, do kterého lze vstoupit pomocí přihlášení.
+\end{enumerate}
+
+Aplikace dále disponuje dvěma základními funkcemi:
 \begin{enumerate}
     \item vyhledávání zakázek -- vyhledávání konkrétních zakázek na základně parametrů zadaných uživatelem; je nezávislé na konkrétním uživateli,
     \item doporučování zakázek -- automatické nabízení vybraných zakázek bez nutnosti exaktního uživatelského vstupu; řídí se profilem uživatele.
 \end{enumerate}
+
 Tyto dvě funkce se principiálně odlišují pouze stylem získání vstupu, na základě kterého systém dohledává relevantní zakázky. V obou případech je výsledkem množina několika zakázek, které aplikace ve stručné reprezentaci zobrazuje na stránce v podobě seznamu s možností prostupu do detailu jednotlivých zakázek. V detailu jsou poté kompletně zobrazeny všechny informace dané zakázky s odkazem na profil\footnote{profil zadavatele -- nezaměňovat s uživatelským profilem; více viz. kapitola \ref{data&domain_dokumenty_vz}} zadavatele, kde je zveřejněná.
 
-Vyhledávání je možné provádět bez nutnosti přihlášení, zatímco funkce doporučování je přihlášením podmíněna. Uživatelské přihlašování aplikace simuluje na základě unikátního identifikátoru nebo čísla IČO, podle kterého inicializuje uživatelský profil.
-\newpage
-V případě, že je uživatel přihlášen, na hlavní stránce aplikace jsou mu nabízeny zakázky ve čtyřech sekcích:
+Vyhledávání je možné provádět bez nutnosti přihlášení, tedy i v anonymním módu, zatímco funkce doporučování je zpřístupněna pouze v privilegovaném módu, kde se řídí uživatelským profilem. Uživatelské přihlašování aplikace simuluje na základě unikátního identifikátoru nebo čísla IČO, podle kterého inicializuje uživatelský profil.
+
+V privilegovaném módu jsou uživateli na hlavní stránce aplikace nabízeny zakázky ve čtyřech sekcích:
 \begin{enumerate}
-    \item Zakázky z blízkého okolí -- podle lokality uvedené na profilu a lokality zadavatelů zakázek (kap. \ref{sec:feature_locality}0,
-    \item Zakázky s předmětem zájmu -- podle položek zájmu uvedených na profilu a předmětu jednotlivých zakázek (kap. \ref{sec:feature_subject}),
-    \item Zakázky podobných zadavatelů -- též podle položek zájmu, ale oproti předmětu podnikání zadavatelů zakázek (kap. \ref{sec:feature_entity_subject}),
-    \item všechna tři kritéria dohromady.
+    \item Zakázky z blízkého okolí (\uv{Blízké zakázky}) -- podle lokality uvedené na profilu a lokality zadavatelů zakázek (kap. \ref{sec:feature_locality}),
+    \item Zakázky s předmětem zájmu (\uv{Zakázky se zajímavým předmětem}) -- podle položek zájmu uvedených na profilu a předmětu jednotlivých zakázek (kap. \ref{sec:feature_subject}),
+    \item Zakázky podobných zadavatelů (\uv{Zakázky podobných zadavatelů}) -- též podle položek zájmu, ale oproti předmětu podnikání zadavatelů zakázek (kap. \ref{sec:feature_entity_subject}),
+    \item všechna tři kritéria dohromady (\uv{Zakázky pro Vás}).
 \end{enumerate}
+
 Aplikace umožňuje uživateli informace svého profilu upravovat a měnit tak svou lokalitu a předmět zájmu.
 
-Podle prostupů na detail jednotlivých zakázek aplikace aktualizuje profil daného uživatele tak, aby se doporučování přizpůsobovalo jeho chování. To řeším přidáváním položek předmětů daných zakázek do uživatelského profilu jako doplňkové položky zájmu, které jsou také vidět na profilu uživatele.
+Podle vyhledávání a prostupů na detaily jednotlivých zakázek aplikace aktualizuje profil daného uživatele tak, aby se doporučování přizpůsobovalo jeho chování. To řeším přidáváním položek předmětů vyhledávání a daných zakázek do uživatelského profilu jako doplňkové položky zájmu. Tyto položky jsou také vidět na profilu uživatele.
 
 \subsection{Technologie}
 
@@ -2010,13 +2059,67 @@ Inicializace aplikace je závislá na konfiguraci předané speciálním soubore
     \item přístupové údaje k databázi,
     \item cesta k modelu pro embedder (viz. kapitola \ref{sec:component_embedding}).
 \end{itemize}
+\newpage
 
+\section{Ukázka použití aplikace}
+Při prvním načtení se uživatel ocitne v anonymním módu aplikace. V tomto módu je mu umožněno plnohodnotné vyhledávání bez vlivu algoritmu doporučování. Na rozdíl od privilegovaného módu se tak uživateli nezobrazují postranní sekce přizpůsobované podle uživatelského profilu, jak je zachyceno na obrázku \ref{fig:pcrec_anonymous_vs_priviledged}.
+\begin{figure}[!h]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+	\includegraphics[width=\textwidth]{images/pcrec/pcrec_anonymous.png}
+	\caption{Anonymní mód aplikace}\label{fig:pcrec_anonymous}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+	\includegraphics[width=\textwidth]{images/pcrec/pcrec_main_edit.png}
+	\caption{Privilegovaný mód aplikace}\label{fig:pcrec_main_edit}
+\end{subfigure}
+\caption{Porovnání anonymního a privilegovaného módu aplikace}
+\label{fig:pcrec_anonymous_vs_priviledged}
+\end{figure}
+\newpage
+
+Uživatel může vstoupit do privilegovaného módu aplikace pomocí přihlášení s uživatelským identifikátorem, nebo číslem IČO.
+% (viz. obrázek \ref{fig:pcrec_login})
+Pokud zvolí přihlášení pomocí čísla IČO, je mu automaticky inicializován profil s položkami předmětu podnikání osoby s daným číslem IČO, jako je vidět na obrázku
+\ref{fig:pcrec_profile1_edit}.
+% \begin{figure}\centering
+% 	\includegraphics[width=\textwidth]{images/pcrec/pcrec_login.png}
+% 	\caption{Přihlášení do aplikace}\label{fig:pcrec_login}
+% \end{figure}
+
+Jakmile je uživatel v privilegovaném módu, aplikace mu začne nabízet doporučované zakázky na základě jeho profilu. V tomto módu aplikace zaznamenává uživatelovo chování do jeho profilu. Pokud tedy uživatel zadá například vyhledávání \uv{stavba bazénu} a prostoupí do detailu některé z vyhledaných zakázek, jako je znázorněno na obrázku \ref{fig:pcrec_search_result_edit}, jeho profil se zaktualizuje podle předmětu vyhledávání a dané zakázky (viz. obrázek \ref{fig:pcrec_profile1_edit}).
+% \begin{figure}\centering
+% 	\includegraphics[width=\textwidth]{images/pcrec/pcrec_search.png}
+% 	\caption{Vyhledávání podle parametrů}\label{fig:pcrec_search}
+% \end{figure}
+\begin{figure}\centering
+	\includegraphics[width=\textwidth]{images/pcrec/pcrec_search_result_edit3.png}
+	\caption{Výsledek vyhledávání podle předmětu \uv{stavba bazénu} s prostupem na detail zakázky}\label{fig:pcrec_search_result_edit}
+\end{figure}
+\begin{figure}\centering
+	\includegraphics[width=\textwidth]{images/pcrec/pcrec_profile_edit.png}
+	\caption{Porovnání čistě inicializovaného a aktualizovaného profilu}\label{fig:pcrec_profile1_edit}
+\end{figure}
+% \begin{figure}\centering
+% 	\includegraphics[width=\textwidth]{images/pcrec/pcrec_profile2.png}
+% 	\caption{Aktualizovaný profil}\label{fig:pcrec_profile2}
+% \end{figure}
+
+Aktualizace profilu má dále za důsledek přizpůsobení obsahu domovské stránky uživatele, jak je znázorněno na obrázku \ref{fig:pcrec_recommended}.
+\begin{figure}\centering
+	\includegraphics[width=\textwidth]{images/pcrec/pcrec_recommended_edit2.png}
+	\caption{Ukázka doporučování aplikace přizpůsobeného předmětu zájmu \uv{stavba bazénu}}\label{fig:pcrec_recommended}
+\end{figure}
 
 \chapter{Budoucí rozšíření systému}
 
 V práci se mi podařilo zprovoznit prototyp doporučovacího systému, který do určité míry funguje. Pro nasazení v reálném prostředí by však bylo vhodné či~přímo nutné systém rozšířit o další funkčnosti. O těchto rozšířeních diskutuji v této kapitole v pořadí od rozšíření s nejvyšší prioritou po rozšíření méně důležitá.
 
-\section{Aktualizace dat}
+\newpage
+\section{Funkční celky k rozšíření}
+\subsection{Aktualizace dat}
 
 V práci jsem používal různé datasety, které byly více či méně aktuální. Ani zdaleka jsem však neobsáhl celou množinu dat českých veřejných zakázek. 
 
@@ -2026,7 +2129,7 @@ V rámci práce jsem vytvořil databázi dokumentů zakázek za období leden a�
 
 Data je ovšem potřeba udržovat co nejaktuálnější, což by pravděpodobně šlo řešit každodenními aktualizacemi databáze zakázek, které by mohly být prováděny například v pravidelných nočních \uv{jobech}.
 
-\section{Aplikace}
+\subsection{Aplikace}
 
 Z pohledu uživatele je aplikace nejdůležitější částí celého systému. V práci jsem vytvořil jednoduchou webovou aplikaci pro demonstrační účely systému, avšak pro reálné použití je nedostačující.
 
@@ -2034,43 +2137,43 @@ Pro dosažení maximální uživatelské spokojenosti by bylo potřeba vytvořit
 
 Uživatelský profil současně aplikace pouze simuluje, což by bylo potřeba nahradit kompletním robustním řešením.
 
-\section{Pokročilejší algoritmy výpočtu podobnosti}
+\subsection{Pokročilejší algoritmy výpočtu podobnosti}
 
 Přestože je úzkým hrdlem současné implementace aplikace databázová vrstva, je možné, že by se výkonnostní problémy dotazování na databázi podařilo vyřešit a nejpomalejší částí systému by se tak stal samotný výpočet podobnosti.
 
 V práci jsem řešil optimalizaci výpočtu podobnosti za použití funkcí pro maticové operace knihovny \textit{numpy}, která se zaměřuje na efektivitu výpočtů.
-Touto implementací trvá výpočet podobnosti obyčejného dotazu oproti zhruba milionu položkám (50 tisíc zakázek s průměrným počtem 20 položek na zakázku, což odpovídá množství dat za jeden rok) řádově jednotky sekund.
+Touto implementací trvá výpočet podobnosti obyčejného dotazu oproti zhruba milionu položkám řádově jednotky sekund, přičemž takové množství dat odpovídá zhruba ročnímu přírůstku (50 tisíc zakázek s průměrným počtem 20 položek na zakázku).
 
-Pokud by byla efektivita současné implementace v produkci nedostačující, bylo by možné pro snížení velikosti počítaných matic algoritmus výpočtu podobnosti rozšířit o \uv{clusterování} či agregaci položek. V případě clusterování by se podobnost počítala nejdříve na úrovni jednotlivých clusterů a poté k~jednotlivým položkám. Agregace položek by mohla probíhat za cenu ztráty určité informace jak na úrovni uživatelského profilu, tak na úrovni zakázek.
+Pokud by byla efektivita současné implementace v produkci nedostačující, bylo by možné pro snížení velikosti počítaných matic algoritmus výpočtu podobnosti rozšířit o shlukování (\uv{clusterování}) či agregaci položek. V případě clusterování by se podobnost počítala nejdříve na úrovni jednotlivých clusterů a poté k~jednotlivým položkám. Agregace položek by mohla probíhat za cenu ztráty určité informace jak na úrovni uživatelského profilu, tak na úrovni zakázek.
 
-\section{Diverzifikace a explorace doporučování}
+\subsection{Diverzifikace a explorace doporučování}
 
-Současný algoritmus doporučování je tzv. \uv{hladový}, tedy zaměřuje se pouze na nalezení několika nejpodobnějších položek (příliš vysoká exploatace), což pro reálné použití není dobrá vlastnost.
+Současný algoritmus doporučování umožňuje aplikaci náhodného šumu na výpočet podobnosti, čímž lze do určité míry nastavovat poměr explorace a exploatace doporučování. Stále ale může docházet k výskytům příliš podobných výsledků (slabá diverzifikace).
 
-Bylo by vhodné aplikovat některé metody pro balancování poměru explorace a exploatace. 
-Nejjednodušším řešením by mohla být aplikace náhodného vlivu pro výpočet podobnosti položek, která by měla za důsledek větší diverzifikaci výsledků. Pokročilejší metodou by potom mohlo být například clusterování podobných položek za účelem vybírání pouze podmnožiny výsledků z~daného clusteru.
+Bylo by tedy vhodné aplikovat některé pokročilejší metody pro balancování poměru explorace a exploatace a dosažení objektivní diverzifikace výsledků.
+Jako jedna z možností jak toho dosáhnout se nabízí clusterování podobných položek za účelem vybírání pouze podmnožiny výsledků z~daného clusteru.
 
-\section{Možnosti filtrování zakázek}
+\subsection{Možnosti filtrování zakázek}
 
 Možnosti filtrování navrženého doporučovacího systému jsou omezené pouze na vlastnosti předmětu zakázky, lokality a předmětu podnikání zadavatele. Pro reálné užití systému by bylo vhodné po vzoru jiných současných systémů doplnit možnosti filtrování podle dalších vlastností zakázek jako je jejich kategorické či časové zařazení, stav, cenový rozsah a podobně.
 
-\section{Klasifikátor CPV}
+\subsection{Klasifikátor CPV}
 
 Na základě analýzy datasetu v kapitole \ref{sec:cpv_distribution} uzavírám CPV klasifikaci dokumentů s odůvodněním nedostatečného datasetu.
 
 V případě, že by se dostatečný dataset podařilo vytvořit, bylo by možné učit klasifikátor pro automatické rozpoznávání kategorie dokumentů a tudíž i zakázek.
 
-\section{Katalog produktů}
+\subsection{Katalog produktů}
 
-V kapitole \ref{sec:product_catalog} pojednávám o možnostech využití katalogu produktů v systému.
+V kapitole \ref{sec:product_catalog} pojednávám o možnostech využití katalogu produktů.
 
 Takový katalog se mi nepodařilo v rámci práce opatřit, ovšem v případě, že by se to podařilo, dalo by se s jeho pomocí získat další hodnotné informace o předmětu zakázek.
 
-\section{Vlastní model pro embedding dokumentů}
+\subsection{Vlastní model pro embedding dokumentů}
 
 V rámci zjednodušení kapitoly embeddingu dokumentů (\ref{sec:document_embedding}) jsem v práci použil předučené jazykové modely. Funkčnost modelů je ovšem závislá na povaze korpusu, na kterém jsou učené a proto by bylo vhodné v doméně veřejných zakázek naučit nebo alespoň vyladit model na korpusu, který by byl vytvořený z dokumentací samotných veřejných zakázek.
 
-\section{Ladění extrakce předmětu}
+\subsection{Ladění extrakce předmětu}
 Extrakce předmětu z textu je v oboru zpracování přirozeného jazyka problém sám o sobě, kterým se dlouhodobě zabývá mnoho odborníků.
 
 Algoritmy extrakce předmětu navržené a implementované v této práci plní do jisté míry svůj účel, ovšem stále za přítomnosti nezanedbatelného množství falešných pozitivních i negativních nálezů. V tom smyslu by tedy mohla extrakce předmětu zakázek jít dále řešit jako celý samostatný projekt.
@@ -2091,13 +2194,19 @@ Algoritmy extrakce předmětu navržené a implementované v této práci plní 
 	
 	V závěru práce pojednávám o možnostech rozšíření systému nutných pro jeho nasazení v reálném prostředí.
 	
-	Celý projekt je vybudovaný za pomocí open-source technologií a pod open-source licencí je též vydaný.
+	Celý projekt je vybudovaný za pomocí open-source technologií a pod open-source licencí je též vydaný a dostupný v repozitáři laboratoře otevřených dat  \textit{opendatalabcz/public-contract-recommendation}\footnote{opendatalabcz/public-contract-recommendation repozitář\newline
+	-- dostupný z https://github.com/opendatalabcz/public-contract-recommendation}.
 \end{conclusion}
 
 \bibliographystyle{csn690}
 \bibliography{mybibliographyfile}
 
 \appendix
+
+% \chapter{Ukázka použití aplikace}
+% \label{sec:application_use_case}
+
+
 
 \chapter{Seznam použitých zkratek}
 % \printglossaries
@@ -2240,20 +2349,22 @@ Algoritmy extrakce předmětu navržené a implementované v této práci plní 
 % 
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
 
-\chapter{Obsah přiloženého CD}
+\chapter{Obsah přiloženého média}
 
 %upravte podle skutecnosti
 
 \begin{figure}
 	\dirtree{%
-		.1 readme.txt\DTcomment{stručný popis obsahu CD}.
-		.1 exe\DTcomment{adresář se spustitelnou formou implementace}.
-		.1 src.
-		.2 impl\DTcomment{zdrojové kódy implementace}.
-		.2 thesis\DTcomment{zdrojová forma práce ve formátu \LaTeX{}}.
-		.1 text\DTcomment{text práce}.
-		.2 thesis.pdf\DTcomment{text práce ve formátu PDF}.
-		.2 thesis.ps\DTcomment{text práce ve formátu PS}.
+		.1 README.md\DTcomment{stručný popis repozitáže obsahujího tuto práci}.
+		.1 LICENSE\DTcomment{licence k užití celého projektu}.
+		.1 application\DTcomment{adresář s výsledným produktem}.
+		.2 recommender.
+		.3 docs\DTcomment{zdrojový kód dokumentace}.
+		.3 src\DTcomment{zdrojové kódy implementace}.
+		.3 tests\DTcomment{spustitelné testy}.
+		.3 README.rst\DTcomment{instalační manuál}.
+		.1 research\DTcomment{adresář obsahující jednolité výzkumné části}.
+		.1 thesis\DTcomment{zdrojová a textová forma práce}.
 	}
 \end{figure}
 
