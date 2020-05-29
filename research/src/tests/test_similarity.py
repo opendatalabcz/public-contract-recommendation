@@ -8,7 +8,7 @@ from recommender.component.similarity.geospatial import LocalityDistanceComputer
     AggregatedLocalSimilarityComputer
 from recommender.component.similarity.standardization import WeightedStandardizer
 from recommender.component.similarity.vector_space import ItemDistanceComputer, SimilarItemsComputer, \
-    AggregatedItemSimilarityComputer
+    AggregatedItemSimilarityComputer, ClusteredItemDistanceComputer
 
 
 def test_item_distance_computer(context):
@@ -284,7 +284,25 @@ def test_item_distance_computer_efficiency(context):
     df_query = create_random_dataframe(nqueries).rename(columns={'id': 'query_id'})
 
     idc = ItemDistanceComputer(df_contracts)
-    result = idc.compute_nearest(df_query, num_results=ncontracts)
+    result = idc.compute_nearest(df_query, num_results=numpy.iinfo(numpy.int32).max)
+    assert numpy.isclose(0.19712971175935512, result[0][''][0]['distance'])
+
+
+def test_item_distance_computer_efficiency(context):
+    numpy.random.seed(42)
+    ncontracts = 100
+    nqueries = 1
+    df_contracts = create_random_dataframe(ncontracts).rename(columns={'id': 'contract_id'})
+    df_query = create_random_dataframe(nqueries).rename(columns={'id': 'query_id'})
+
+    start = time.time()
+    idc = ClusteredItemDistanceComputer(df_contracts)
+    stop = time.time()
+    print(stop-start)
+    start = time.time()
+    result = idc.compute_nearest(df_query, num_results=numpy.iinfo(numpy.int32).max)
+    stop = time.time()
+    print(stop-start)
     assert numpy.isclose(0.19712971175935512, result[0][''][0]['distance'])
 
 

@@ -1,10 +1,12 @@
 from typing import List, Tuple, Dict
 
+import hdbscan
 import numpy
 import pandas
 from pandas import DataFrame
 from scipy.spatial import distance as spatial_distance
 from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.preprocessing import Normalizer
 
 from recommender.component.base import Component
 from recommender.component.similarity.standardization import CosineStandardizer
@@ -189,6 +191,104 @@ class ItemDistanceComputer(Component):
                 contr_item = contr_items[index_contr_item]
 
                 item_results.append({'contract_id': contr_id, 'item': contr_item, 'distance': distance})
+        return results
+
+
+class ClusteredItemDistanceComputer(ItemDistanceComputer):
+
+    DEFAULT_COLUMNS = ('embeddings', 'items')
+
+    def __init__(self, df_contract_items: DataFrame, distance_computer=None, clusterer_args=None, **kwargs):
+        super().__init__(df_contract_items, distance_computer="fake_computer", **kwargs)
+        self._clusterer_args = clusterer_args or {'min_cluster_size': 5, 'cluster_selection_epsilon': 0.5}
+        self._clusters = self._build_clusters(self._nvectors, self._nvec_to_contr)
+        self._nrepr_vectors, self._nvec_to_cluster = self._count_mappings_to_clusters(self._clusters)
+        self._vec_to_vec_to_contr = [cluster['vec_to_entity'] for cluster in self._clusters.values()]
+        self._distance_vec_comp = distance_computer or OptimalizedCosineDistanceVectorComputer(self._nrepr_vectors)
+
+    def _count_mapping(self, df_items):
+        embeddings_col = self._df_embeddings_col if self._df_embeddings_col in df_items.columns else \
+            self.DEFAULT_COLUMNS[0]
+        vectors = []
+        vec_to_entity = []
+        for index, row in df_items.iterrows():
+            if not isinstance(row[embeddings_col], list):
+                continue
+            for i, e in enumerate(row[embeddings_col]):
+                vectors.append(e)
+                vec_to_entity.append((index, i))
+        nvectors = numpy.array(vectors, dtype=numpy.float32)
+        nvec_to_entity = numpy.array(vec_to_entity, dtype=numpy.int)
+        return nvectors, nvec_to_entity
+
+    def _build_clusters(self, nvectors, nvec_to_entity):
+        normalizer = Normalizer(norm='l2')
+        clusterer = hdbscan.HDBSCAN(**self._clusterer_args)
+        nnvectors = normalizer.fit(nvectors).transform(nvectors)
+        clusterer.fit_predict(nnvectors)
+        clusters = {}
+        off_clusters = {}
+        num_clusters = clusterer.labels_.max()
+        for i, label in enumerate(clusterer.labels_):
+            if label == -1:
+                vec = nvectors[i]
+                tvec = tuple(vec)
+                if tvec not in off_clusters:
+                    num_clusters += 1
+                    off_clusters[tvec] = num_clusters
+                label = off_clusters[tvec]
+            cluster = clusters.get(label,
+                                   {'cluster_id': label, 'representatives': set(), 'vectors': [], 'vec_to_entity': []})
+            cluster['representatives'].add(tuple(nvectors[i]))
+            cluster['vectors'].append(nvectors[i])
+            cluster['vec_to_entity'].append(nvec_to_entity[i])
+            clusters[label] = cluster
+        for cluster in clusters.values():
+            cluster['representatives'] = [numpy.array(vec) for vec in cluster['representatives']]
+        return clusters
+
+    def _count_mappings_to_clusters(self, clusters):
+        repr_vectors = []
+        vec_to_cluster = []
+        for cluster in clusters.values():
+            for e in cluster['representatives']:
+                repr_vectors.append(e)
+                vec_to_cluster.append(cluster['cluster_id'])
+        nrepr_vectors = numpy.array(repr_vectors, dtype=numpy.float32)
+        nvec_to_cluster = numpy.array(vec_to_cluster, dtype=numpy.int)
+        return nrepr_vectors, nvec_to_cluster
+
+    def compute_nearest(self, df_query_items: DataFrame, num_results=1) -> Dict[int, Dict[int, List[Dict[str, any]]]]:
+        target_nvectors, nvec_to_query = self._count_mapping(df_query_items)
+        self._timer.start()
+        nearest_clusters = self._distance_vec_comp.compute_nearest(target_nvectors, self._nrepr_vectors, num_results)
+        self._timer.stop()
+
+        self._timer.start()
+        results = {}
+        # backward mapping of indexes to items
+        for index_target_item, target_item_row in enumerate(nearest_clusters):
+            index_df_query = nvec_to_query[index_target_item][0]
+            query_id = df_query_items.loc[index_df_query, 'query_id']
+            query_items = df_query_items.loc[index_df_query, 'items']
+            index_query_item = nvec_to_query[index_target_item][1]
+            query_item = query_items[index_query_item]
+
+            query_results = results.get(query_id, {})
+            results[query_id] = query_results
+            item_results = query_results.get(query_item, [])
+            query_results[query_item] = item_results
+
+            for index_cluster, distance in target_item_row:
+                cluster_id = self._nvec_to_cluster[index_cluster]
+                for vec_to_entity in self._vec_to_vec_to_contr[cluster_id]:
+                    index_df_contr = vec_to_entity[0]
+                    contr_id = self._contract_ids[index_df_contr]
+                    contr_items = self._contract_items[index_df_contr]
+                    index_contr_item = vec_to_entity[1]
+                    contr_item = contr_items[index_contr_item]
+                    item_results.append({'contract_id': contr_id, 'item': contr_item, 'distance': distance})
+        self._timer.stop()
         return results
 
 
