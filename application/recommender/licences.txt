@@ -1,0 +1,8 @@
+deepmipt/DeepPavlov - Apache License 2.0
+facebookresearch/SentEval - BSD
+fasttext_model/czech_wiki - CC BY-SA 3.0
+google-research/bert - Apache License 2.0
+HIT-SCIR/ELMoForManyLangs - MIT
+udapi/udapi-python - GPLv3
+ufal.udpipe - MPL 2.0
+UD_Czech-PDT - CC BY-NC-SA 3.0
